@@ -2,14 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Initialize Groq SDK
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Middleware
 app.use(cors({
@@ -52,30 +51,36 @@ Keep answers concise (2-4 sentences) unless the user asks for more detail.
 If asked something unrelated to ${country}, its geography, culture, or history, politely steer the conversation back to ${country}.
 `.trim();
 
-        // Format history for Gemini SDK
+        // Format history for Groq API
+        // Groq uses 'assistant' instead of 'model', and 'content' instead of 'parts[{text}]'
         const formattedHistory = (chatHistory || []).map(msg => ({
-            role: msg.role,
-            parts: [{ text: msg.text }]
+            role: msg.role === 'model' ? 'assistant' : 'user',
+            content: msg.text
         }));
 
-        // Gemini API strictly requires history to start with a 'user' message.
-        // The UI inserts an initial greeting from the 'model', so we strip any leading model messages.
+        // Groq doesn't require history to start with a 'user' message as strictly as Gemini,
+        // but we still strip the initial UI greeting for context cleanliness.
         while (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
             formattedHistory.shift();
         }
 
-        // Start chat session with history
-        const chatSession = model.startChat({
-            systemInstruction,
-            history: formattedHistory
-        });
+        // Construct the full message array for Groq
+        const messages = [
+            { role: "system", content: systemInstruction },
+            ...formattedHistory,
+            { role: "user", content: question }
+        ];
 
-        const result = await chatSession.sendMessage(question);
+        // Call Groq API
+        const chatCompletion = await groq.chat.completions.create({
+            messages: messages,
+            model: "llama-3.1-8b-instant", // Using a fast Groq model
+        });
         
-        res.json({ reply: result.response.text() });
+        res.json({ reply: chatCompletion.choices[0]?.message?.content || "" });
 
     } catch (error) {
-        console.error("Gemini API Error:", error);
+        console.error("Groq API Error:", error);
         res.status(500).json({ error: "Something went wrong, please try again." });
     }
 });

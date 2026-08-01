@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import GlobeView from './components/GlobeView';
 import CountryInfoPanel from './components/CountryInfoPanel';
 import SearchBar from './components/SearchBar';
-import { Globe2 } from 'lucide-react';
+import { Globe2, Shuffle, Sparkles } from 'lucide-react';
 import { feature } from 'topojson-client';
 import iso3166 from 'iso-3166-1';
 
@@ -14,7 +14,24 @@ function App() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isGlobeReady, setIsGlobeReady] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
-  
+  const [loadingQuoteIndex, setLoadingQuoteIndex] = useState(0);
+
+  const loadingQuotes = [
+    "Mapping sovereign boundaries...",
+    "Initializing 3D orbital canvas...",
+    "Connecting AI country guide...",
+    "Preparing satellite textures..."
+  ];
+
+  // Rotate loading quotes
+  useEffect(() => {
+    if (isAppReady) return;
+    const interval = setInterval(() => {
+      setLoadingQuoteIndex(prev => (prev + 1) % loadingQuotes.length);
+    }, 800);
+    return () => clearInterval(interval);
+  }, [isAppReady]);
+
   // Load TopoJSON data asynchronously
   useEffect(() => {
     async function loadData() {
@@ -49,13 +66,20 @@ function App() {
   // Wait for both globe textures and data
   useEffect(() => {
     if (isDataLoaded && isGlobeReady) {
-      // Small delay just to ensure rendering is smooth
-      setTimeout(() => setIsAppReady(true), 200);
+      setTimeout(() => setIsAppReady(true), 300);
     }
   }, [isDataLoaded, isGlobeReady]);
 
+  // Random Country Selection
+  const handleRandomCountry = () => {
+    if (!countriesData || countriesData.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * countriesData.length);
+    const randomCountry = countriesData[randomIndex];
+    setSelectedCountry(randomCountry.properties);
+  };
+
   return (
-    <div className="relative w-full h-screen overflow-hidden font-sans bg-navy text-white">
+    <div className="relative w-full h-screen overflow-hidden font-sans bg-[#070a12] text-white">
       
       {/* 3D Globe Background */}
       <GlobeView 
@@ -65,18 +89,41 @@ function App() {
         onGlobeReady={() => setIsGlobeReady(true)}
       />
       
-      {/* Top Bar Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-black/30 backdrop-blur-md border-b border-white/10 z-30 flex items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <Globe2 className="text-teal-400" size={24} />
-          <h1 className="text-lg sm:text-xl font-bold tracking-wide text-white whitespace-nowrap">
-            World Globe AI
-          </h1>
+      {/* Top Floating Glass Header */}
+      <header className="fixed top-4 left-4 right-4 sm:left-6 sm:right-6 h-16 glass-pill rounded-full z-30 flex items-center justify-between px-4 sm:px-6 pointer-events-auto">
+        
+        {/* Brand Logo & Name */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center glow-teal">
+            <Globe2 className="text-teal-400 animate-pulse-glow" size={22} />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-base sm:text-lg font-extrabold tracking-tight gradient-text whitespace-nowrap leading-none flex items-center gap-1.5">
+              World Globe AI
+              <span className="text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-400/30 uppercase">
+                AI 3D
+              </span>
+            </h1>
+            <span className="text-[11px] text-gray-400 hidden sm:block">Explore Earth with Interactive AI</span>
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="w-48 sm:w-64 ml-4">
-          <SearchBar countries={countriesData} onSelectCountry={setSelectedCountry} />
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Random Country Shuffle Button */}
+          <button 
+            onClick={handleRandomCountry}
+            title="Discover a Random Country"
+            className="glass-pill px-3 py-2 rounded-full flex items-center gap-2 text-xs font-semibold text-teal-300 hover:text-white transition-all shadow-md active:scale-95"
+          >
+            <Shuffle size={14} className="text-teal-400" />
+            <span className="hidden md:inline">Random Nation</span>
+          </button>
+
+          {/* Search Bar */}
+          <div className="w-36 sm:w-64">
+            <SearchBar countries={countriesData} onSelectCountry={setSelectedCountry} />
+          </div>
         </div>
       </header>
 
@@ -86,15 +133,27 @@ function App() {
         onClose={() => setSelectedCountry(null)} 
       />
 
-      {/* Loading Screen Overlay */}
+      {/* Fullscreen Loading Overlay */}
       <div 
-        className={`absolute inset-0 z-50 bg-[#0a0e17] flex flex-col items-center justify-center transition-opacity duration-400 ${
-          isAppReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        className={`fixed inset-0 z-50 bg-[#070a12] flex flex-col items-center justify-center transition-all duration-500 ${
+          isAppReady ? 'opacity-0 pointer-events-none scale-105' : 'opacity-100 scale-100'
         }`}
       >
-        <Globe2 className="text-teal-400 animate-spin-slow mb-4" size={64} style={{ animationDuration: '3s' }} />
-        <h2 className="text-2xl font-bold tracking-wider mb-2">World Globe AI</h2>
-        <p className="text-gray-400 text-sm animate-pulse">Loading world data...</p>
+        <div className="relative flex items-center justify-center mb-8">
+          {/* Glowing Aura Ring */}
+          <div className="absolute w-36 h-36 rounded-full bg-teal-500/20 blur-2xl animate-pulse" />
+          <div className="w-24 h-24 rounded-full border border-teal-500/30 flex items-center justify-center bg-white/5 backdrop-blur-md glow-teal">
+            <Globe2 className="text-teal-400 animate-spin-slow" size={48} />
+          </div>
+        </div>
+
+        <h2 className="text-3xl font-extrabold tracking-tight gradient-text mb-2 flex items-center gap-2">
+          World Globe AI
+          <Sparkles className="text-cyan-400" size={20} />
+        </h2>
+        <p className="text-gray-400 text-sm font-medium animate-pulse transition-all h-6">
+          {loadingQuotes[loadingQuoteIndex]}
+        </p>
       </div>
     </div>
   );
