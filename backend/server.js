@@ -11,8 +11,18 @@ const PORT = process.env.PORT || 5000;
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Middleware
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
 app.use(cors({
-    origin: 'http://localhost:5173', // Restrict to frontend dev URL
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('CORS policy violation: Origin not allowed'));
+    },
     methods: ['GET', 'POST']
 }));
 app.use(express.json());
