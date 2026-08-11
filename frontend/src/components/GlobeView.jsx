@@ -11,9 +11,40 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
   });
   const [hoveredCountry, setHoveredCountry] = useState(null);
   const [isRotating, setIsRotating] = useState(true);
+  const [isNightMode, setIsNightMode] = useState(false);
+  const [showArcs, setShowArcs] = useState(true);
+  const [arcsData, setArcsData] = useState([]);
 
   // Track user interaction to pause/resume rotation
   const interactionTimeout = useRef(null);
+
+  // Generate random arcs once countries data is loaded
+  useEffect(() => {
+    if (countriesData && countriesData.length > 0 && arcsData.length === 0) {
+      const generatedArcs = [];
+      const numArcs = 40; // Number of glowing arcs
+      for (let i = 0; i < numArcs; i++) {
+        const startCountry = countriesData[Math.floor(Math.random() * countriesData.length)];
+        const endCountry = countriesData[Math.floor(Math.random() * countriesData.length)];
+        
+        if (startCountry && endCountry) {
+          const startCentroid = geoCentroid(startCountry);
+          const endCentroid = geoCentroid(endCountry);
+          
+          if (!isNaN(startCentroid[0]) && !isNaN(endCentroid[0])) {
+            generatedArcs.push({
+              startLat: startCentroid[1],
+              startLng: startCentroid[0],
+              endLat: endCentroid[1],
+              endLng: endCentroid[0],
+              color: ['rgba(45, 212, 191, 0.1)', 'rgba(34, 211, 238, 0.9)'] // gradient from transparent teal to bright cyan
+            });
+          }
+        }
+      }
+      setArcsData(generatedArcs);
+    }
+  }, [countriesData]);
 
   // Handle window resize dynamically
   useEffect(() => {
@@ -119,7 +150,7 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
         ref={globeRef}
         width={windowSize.width}
         height={windowSize.height}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        globeImageUrl={isNightMode ? "//unpkg.com/three-globe/example/img/earth-night.jpg" : "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"}
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
         atmosphereColor="#2dd4bf"
         atmosphereAltitude={0.16}
@@ -132,7 +163,7 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
           if (hoveredCountry && hoveredCountry.properties.name === d.properties.name) {
             return 'rgba(34, 211, 238, 0.45)'; // Soft cyan fill for hover
           }
-          return 'rgba(120, 144, 156, 0.12)'; // Ultra clean subtle base fill
+          return isNightMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(120, 144, 156, 0.12)'; 
         }}
         polygonSideColor={() => 'rgba(7, 10, 18, 0.6)'}
         polygonStrokeColor={(d) => {
@@ -142,15 +173,27 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
           if (hoveredCountry && hoveredCountry.properties.name === d.properties.name) {
             return '#2dd4bf';
           }
-          return 'rgba(255, 255, 255, 0.25)';
+          return isNightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.25)';
         }}
         onPolygonHover={onPolygonHover}
         onPolygonClick={onPolygonClick}
         onGlobeReady={onGlobeReady}
+        
+        // Arc settings
+        arcsData={showArcs ? arcsData : []}
+        arcColor="color"
+        arcDashLength={0.4}
+        arcDashGap={4}
+        arcDashInitialGap={() => Math.random() * 5}
+        arcDashAnimateTime={2000}
+        arcAltitude={() => Math.random() * 0.3 + 0.1}
+        arcStroke={0.5}
       />
 
       {/* Floating Interactive Controls HUD */}
-      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2 pointer-events-auto">
+      <div className="fixed bottom-6 left-6 z-30 flex flex-col gap-3 pointer-events-auto">
+        
+        {/* Main Controls */}
         <div className="glass-pill p-1.5 flex items-center gap-1 rounded-full shadow-2xl">
           <button 
             onClick={toggleRotation} 
@@ -189,8 +232,27 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
           </button>
         </div>
 
+        {/* Feature Toggles */}
+        <div className="glass-pill p-1.5 flex items-center gap-1 rounded-full shadow-2xl">
+          <button 
+            onClick={() => setIsNightMode(!isNightMode)} 
+            title="Toggle Night Mode"
+            className={`px-3 py-1.5 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${isNightMode ? 'bg-teal-500/20 text-teal-300' : 'text-gray-400 hover:text-gray-200 hover:bg-white/10'}`}
+          >
+            Night Mode
+          </button>
+          <div className="w-px h-4 bg-white/10" />
+          <button 
+            onClick={() => setShowArcs(!showArcs)} 
+            title="Toggle Data Arcs"
+            className={`px-3 py-1.5 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${showArcs ? 'bg-teal-500/20 text-teal-300' : 'text-gray-400 hover:text-gray-200 hover:bg-white/10'}`}
+          >
+            Live Routes
+          </button>
+        </div>
+
         {/* Status Badge */}
-        <div className="hidden sm:flex glass-pill px-3 py-2 rounded-full items-center gap-2 text-xs text-gray-300">
+        <div className="hidden sm:flex glass-pill px-3 py-2 rounded-full items-center gap-2 text-xs text-gray-300 self-start">
           <Compass size={14} className="text-teal-400 animate-spin-slow" />
           <span>{countriesData?.length || 0} Sovereign Nations</span>
         </div>
