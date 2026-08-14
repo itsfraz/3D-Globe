@@ -10,7 +10,7 @@ An ultra-modern, interactive 3D spinning globe web application. Click any sovere
 - **🗺️ Interactive Sovereign Borders**: Clickable GeoJSON borders mapped via `world-atlas` with neon hover and selection highlights.
 - **🔍 Hotkey Search Bar**: Press `Ctrl+K` or `Cmd+K` anywhere to search nations instantly with flag thumbnails and ISO badges.
 - **📊 Real-Time Demographic Data**: Displays official Capital, Region, Subregion, Formatted Population, Currency (name & symbol), and Flags.
-- **🤖 Context-Aware AI Guide**: Powered by **Groq Llama 3.1** (`llama-3.1-8b-instant`). Automatically scopes AI responses to the selected nation without needing to re-type the country name.
+- **🤖 Context-Aware AI Guide**: Powered by **Groq GPT OSS 20B** (`openai/gpt-oss-20b`). Automatically scopes AI responses to the selected nation without needing to re-type the country name.
 - **🎮 Floating Controls HUD**: Play/Pause rotation, Zoom In/Out (+/-), Reset View camera, and a "Random Nation" shuffle button.
 - **📱 Fully Responsive**: Translucency glassmorphism styling (`Outfit` font) that transforms into a bottom-sheet drawer on mobile screens (<768px).
 
@@ -135,7 +135,7 @@ Open your browser at **`http://localhost:5173`**! 🎉
 | **Frontend** | React 18, Vite, TailwindCSS (v4), Framer Motion, Lucide React |
 | **3D Rendering** | `react-globe.gl`, Three.js, `d3-geo`, `topojson-client` |
 | **Backend** | Node.js, Express, `groq-sdk`, `cors`, `express-rate-limit` |
-| **AI Model** | Groq Llama 3.1 8B (`llama-3.1-8b-instant`) |
+| **AI Model** | Groq GPT OSS 20B (`openai/gpt-oss-20b`) |
 | **Data Sources** | `dr5hn/countries-states-cities-database`, `world-atlas`, FlagCDN |
 
 ---

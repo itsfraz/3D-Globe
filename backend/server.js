@@ -84,7 +84,7 @@ If asked something unrelated to ${country}, its geography, culture, or history, 
         // Call Groq API
         const chatCompletion = await groq.chat.completions.create({
             messages: messages,
-            model: "llama-3.1-8b-instant", // Using a fast Groq model
+            model: "openai/gpt-oss-20b", // Using a fast Groq model
         });
         
         res.json({ reply: chatCompletion.choices[0]?.message?.content || "" });
