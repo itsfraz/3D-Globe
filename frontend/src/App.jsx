@@ -5,7 +5,10 @@ import CommandPalette from './components/search/CommandPalette';
 import JourneyPanel from './components/journey/JourneyPanel';
 import ComparePanel from './components/compare/ComparePanel';
 import ExploreMode from './components/explore/ExploreMode';
-import { Globe2, Sparkles, Heart, User, Search, Menu, Command } from 'lucide-react';
+import GeoChallenge from './components/quiz/GeoChallenge';
+import AIWorldGuide from './components/ai/AIWorldGuide';
+import GlobalLayersPanel from './components/layers/GlobalLayersPanel';
+import { Globe2, Sparkles, Heart, User, Search, Menu, Command, Trophy, Layers } from 'lucide-react';
 import { useGlobeData } from './hooks/useGlobeData';
 import { useUserJourney } from './hooks/useUserJourney';
 
@@ -29,8 +32,19 @@ function App() {
   const [isExploreModeOpen, setIsExploreModeOpen] = useState(false);
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [compareCountries, setCompareCountries] = useState([]);
+  
+  // Quiz states
+  const [isQuizModeOpen, setIsQuizModeOpen] = useState(false);
+  const [isAIGuideOpen, setIsAIGuideOpen] = useState(false);
+  const [quizModeType, setQuizModeType] = useState(null);
+  const [quizTargetCountry, setQuizTargetCountry] = useState(null);
+  const [quizClickedPolygon, setQuizClickedPolygon] = useState(null);
+
   const [isNightMode, setIsNightMode] = useState(false);
   const [showArcs, setShowArcs] = useState(true);
+  
+  const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
+  const [activeLayer, setActiveLayer] = useState('borders');
 
   const userJourney = useUserJourney();
 
@@ -97,12 +111,25 @@ function App() {
         onSelectCountry={setSelectedCountry}
         compareCountries={compareCountries}
         isCompareMode={isCompareMode}
+        isQuizMode={isQuizModeOpen}
+        quizModeType={quizModeType}
+        quizTargetCountry={quizTargetCountry}
+        onQuizGlobeClick={setQuizClickedPolygon}
         countriesData={countriesData}
         onGlobeReady={() => setIsGlobeReady(true)}
         isNightMode={isNightMode}
         setIsNightMode={setIsNightMode}
         showArcs={showArcs}
         setShowArcs={setShowArcs}
+        activeLayer={activeLayer}
+      />
+      
+      {/* Global Layers Panel */}
+      <GlobalLayersPanel 
+        isOpen={isLayersPanelOpen}
+        onClose={() => setIsLayersPanelOpen(false)}
+        activeLayer={activeLayer}
+        setActiveLayer={setActiveLayer}
       />
       
       {/* Top Floating Glass Header */}
@@ -158,9 +185,28 @@ function App() {
             >
               Compare
             </button>
-            <button className="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/10 transition-colors">AI</button>
+            <button 
+              onClick={() => setIsQuizModeOpen(true)}
+              className="px-3 py-1.5 rounded-full text-xs font-bold text-yellow-400 hover:text-white hover:bg-yellow-500/20 transition-colors flex items-center gap-1.5"
+            >
+              <Trophy size={12} /> Geo Challenge
+            </button>
+            <button 
+              onClick={() => setIsAIGuideOpen(true)}
+              className="px-3 py-1.5 rounded-full text-xs font-bold text-blue-400 hover:text-white hover:bg-blue-500/20 transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles size={12} /> AI Guide
+            </button>
           </div>
 
+          <button 
+            onClick={() => setIsLayersPanelOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all font-medium text-sm"
+          >
+            <Layers size={16} />
+            <span className="hidden sm:inline">Layers</span>
+          </button>
+          
           <button 
             onClick={() => setIsJourneyPanelOpen(true)}
             className="hidden sm:flex p-2.5 text-gray-400 hover:text-teal-300 hover:bg-white/10 rounded-full transition-colors relative" 
@@ -201,6 +247,15 @@ function App() {
         background: 'radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.05) 0%, rgba(7, 10, 18, 0) 60%)'
       }} />
 
+      {/* AI World Guide */}
+      <AIWorldGuide 
+        isOpen={isAIGuideOpen} 
+        onClose={() => setIsAIGuideOpen(false)} 
+        selectedCountry={selectedCountry}
+        compareCountries={compareCountries}
+        isCompareMode={isCompareMode}
+      />
+
       {/* Fullscreen Loading Overlay */}
       <div 
         className={`fixed inset-0 z-50 bg-[#070a12] flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${
@@ -232,6 +287,10 @@ function App() {
         onRandomCountry={handleRandomCountry}
         onOpenFavorites={() => setIsJourneyPanelOpen(true)}
         onOpenCompare={() => setIsCompareMode(true)}
+        onOpenExplore={() => setIsExploreModeOpen(true)}
+        onOpenQuiz={() => setIsQuizModeOpen(true)}
+        onOpenAIGuide={() => setIsAIGuideOpen(true)}
+        onOpenLayers={() => setIsLayersPanelOpen(true)}
         isNightMode={isNightMode}
         onToggleNightMode={() => setIsNightMode(!isNightMode)}
         showArcs={showArcs}
@@ -262,6 +321,18 @@ function App() {
         countriesData={countriesData}
         onSelectCountry={setSelectedCountry}
         userJourney={userJourney}
+      />
+
+      {/* Global Geo Challenge */}
+      <GeoChallenge 
+        isOpen={isQuizModeOpen}
+        onClose={() => setIsQuizModeOpen(false)}
+        countriesData={countriesData}
+        userJourney={userJourney}
+        setQuizModeType={setQuizModeType}
+        setQuizTargetCountry={setQuizTargetCountry}
+        quizClickedPolygon={quizClickedPolygon}
+        clearQuizClickedPolygon={() => setQuizClickedPolygon(null)}
       />
     </div>
   );

@@ -3,11 +3,18 @@ import { useState, useEffect, useMemo } from 'react';
 const FAVORITES_KEY = 'world-globe-ai-favorites';
 const EXPLORED_KEY = 'world-globe-ai-explored';
 const ACTIVITY_KEY = 'world-globe-ai-activity';
+const QUIZ_STATS_KEY = 'world-globe-ai-quiz-stats';
 
 export function useUserJourney() {
   const [favorites, setFavorites] = useState([]);
   const [explored, setExplored] = useState([]);
   const [activity, setActivity] = useState([]);
+  const [quizStats, setQuizStats] = useState({
+    bestScore: 0,
+    totalQuizzes: 0,
+    questionsAnswered: 0,
+    correctAnswers: 0
+  });
 
   // Load from local storage
   useEffect(() => {
@@ -15,10 +22,17 @@ export function useUserJourney() {
       const favs = JSON.parse(localStorage.getItem(FAVORITES_KEY)) || [];
       const expl = JSON.parse(localStorage.getItem(EXPLORED_KEY)) || [];
       const act = JSON.parse(localStorage.getItem(ACTIVITY_KEY)) || [];
+      const qStats = JSON.parse(localStorage.getItem(QUIZ_STATS_KEY)) || {
+        bestScore: 0,
+        totalQuizzes: 0,
+        questionsAnswered: 0,
+        correctAnswers: 0
+      };
       
       setFavorites(favs);
       setExplored(expl);
       setActivity(act);
+      setQuizStats(qStats);
     } catch (e) {
       console.error("Failed to parse journey data from localStorage", e);
     }
@@ -58,6 +72,22 @@ export function useUserJourney() {
 
   const clearFavorites = () => {
     saveFavorites([]);
+  };
+
+  const clearHistory = () => {
+    setExplored([]);
+    localStorage.setItem(EXPLORED_KEY, JSON.stringify([]));
+  };
+
+  const recordQuizScore = (score, totalQuestions) => {
+    const newStats = {
+      bestScore: Math.max(quizStats.bestScore, score),
+      totalQuizzes: quizStats.totalQuizzes + 1,
+      questionsAnswered: quizStats.questionsAnswered + totalQuestions,
+      correctAnswers: quizStats.correctAnswers + score
+    };
+    setQuizStats(newStats);
+    localStorage.setItem(QUIZ_STATS_KEY, JSON.stringify(newStats));
   };
 
   const addExploration = (country) => {
@@ -171,9 +201,27 @@ export function useUserJourney() {
         title: 'Curator',
         description: 'Save 10 favorites',
         unlocked: stats.totalFavorites >= 10
+      },
+      {
+        id: 'quiz_first',
+        title: 'First Quiz',
+        description: 'Completed your first Geography Challenge',
+        unlocked: quizStats.totalQuizzes >= 1
+      },
+      {
+        id: 'quiz_perfect',
+        title: 'Perfect Score',
+        description: 'Achieved a perfect score on a Geography Challenge',
+        unlocked: quizStats.bestScore === 10
+      },
+      {
+        id: 'quiz_master',
+        title: 'Quiz Master',
+        description: 'Completed 10 Geography Challenges',
+        unlocked: quizStats.totalQuizzes >= 10
       }
     ];
-  }, [stats]);
+  }, [stats, quizStats]);
 
   // Recent history (max 10)
   const recentHistory = useMemo(() => {
@@ -186,9 +234,12 @@ export function useUserJourney() {
     isFavorite,
     removeFavorite,
     clearFavorites,
+    clearHistory,
     addExploration,
     recentHistory,
     stats,
+    quizStats,
+    recordQuizScore,
     streak,
     achievements
   };

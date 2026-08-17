@@ -7,9 +7,6 @@ const Groq = require('groq-sdk');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize Groq SDK
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 // Middleware
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
@@ -39,109 +36,9 @@ app.get('/api/health', (req, res) => {
     res.json({ status: "ok" });
 });
 
-// Chat endpoint
-app.post('/api/ask', apiLimiter, async (req, res) => {
-    const { country, question, chatHistory } = req.body;
-
-    // Validation
-    if (!country || typeof country !== 'string' || country.trim() === '') {
-        return res.status(400).json({ error: "Missing or invalid 'country' field." });
-    }
-    if (!question || typeof question !== 'string' || question.trim() === '') {
-        return res.status(400).json({ error: "Missing or invalid 'question' field." });
-    }
-
-    try {
-        const systemInstruction = `
-You are a knowledgeable, friendly guide for the country ${country}.
-The user is currently viewing information about ${country} on an interactive globe app.
-Answer all questions about ${country} specifically and in an engaging, factual, conversational way,
-even if the user's question doesn't explicitly mention the country's name — always assume it refers to ${country}.
-Keep answers concise (2-4 sentences) unless the user asks for more detail.
-If asked something unrelated to ${country}, its geography, culture, or history, politely steer the conversation back to ${country}.
-`.trim();
-
-        // Format history for Groq API
-        // Groq uses 'assistant' instead of 'model', and 'content' instead of 'parts[{text}]'
-        const formattedHistory = (chatHistory || []).map(msg => ({
-            role: msg.role === 'model' ? 'assistant' : 'user',
-            content: msg.text
-        }));
-
-        // Groq doesn't require history to start with a 'user' message as strictly as Gemini,
-        // but we still strip the initial UI greeting for context cleanliness.
-        while (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
-            formattedHistory.shift();
-        }
-
-        // Construct the full message array for Groq
-        const messages = [
-            { role: "system", content: systemInstruction },
-            ...formattedHistory,
-            { role: "user", content: question }
-        ];
-
-        // Call Groq API
-        const chatCompletion = await groq.chat.completions.create({
-            messages: messages,
-            model: "openai/gpt-oss-20b", // Using a fast Groq model
-        });
-        
-        res.json({ reply: chatCompletion.choices[0]?.message?.content || "" });
-
-    } catch (error) {
-        console.error("Groq API Error:", error);
-        res.status(500).json({ error: "Something went wrong, please try again." });
-    }
-});
-
-// Compare endpoint
-app.post('/api/compare', apiLimiter, async (req, res) => {
-    const { countryA, countryB, question, chatHistory } = req.body;
-
-    if (!countryA || !countryB || typeof countryA !== 'string' || typeof countryB !== 'string') {
-        return res.status(400).json({ error: "Missing or invalid country fields." });
-    }
-    if (!question || typeof question !== 'string' || question.trim() === '') {
-        return res.status(400).json({ error: "Missing or invalid 'question' field." });
-    }
-
-    try {
-        const systemInstruction = `
-You are an impartial, analytical AI guide comparing two countries: ${countryA} and ${countryB}.
-The user is currently viewing a side-by-side comparison of these two countries on an interactive globe app.
-Answer all questions by contrasting and comparing ${countryA} and ${countryB}.
-Keep your answers concise, structured (using bullet points or short paragraphs), and factual.
-Highlight key differences and similarities. If asked about a specific topic (e.g., travel, cost of living, tech jobs), provide a balanced view.
-`.trim();
-
-        const formattedHistory = (chatHistory || []).map(msg => ({
-            role: msg.role === 'model' ? 'assistant' : 'user',
-            content: msg.text
-        }));
-
-        while (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
-            formattedHistory.shift();
-        }
-
-        const messages = [
-            { role: "system", content: systemInstruction },
-            ...formattedHistory,
-            { role: "user", content: question }
-        ];
-
-        const chatCompletion = await groq.chat.completions.create({
-            messages: messages,
-            model: "openai/gpt-oss-20b",
-        });
-        
-        res.json({ reply: chatCompletion.choices[0]?.message?.content || "" });
-
-    } catch (error) {
-        console.error("Groq Compare API Error:", error);
-        res.status(500).json({ error: "Something went wrong, please try again." });
-    }
-});
+// AI Routes
+const aiRoutes = require('./routes/aiRoutes');
+app.use('/api/ai', apiLimiter, aiRoutes);
 
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);

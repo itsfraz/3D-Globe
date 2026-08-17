@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Globe from 'react-globe.gl';
 import { geoCentroid } from 'd3-geo';
+import { scaleLog } from 'd3-scale';
 import { Play, Pause, ZoomIn, ZoomOut, RotateCcw, Compass, Moon, Sun, Layers } from 'lucide-react';
 
 export default function GlobeView({ 
@@ -8,12 +9,17 @@ export default function GlobeView({
   onSelectCountry, 
   compareCountries = [],
   isCompareMode = false,
+  isQuizMode = false,
+  quizModeType = null,
+  quizTargetCountry = null,
+  onQuizGlobeClick,
   countriesData, 
   onGlobeReady,
   isNightMode,
   setIsNightMode,
   showArcs,
-  setShowArcs
+  setShowArcs,
+  activeLayer = 'borders'
 }) {
   const globeRef = useRef();
   const [windowSize, setWindowSize] = useState({
@@ -168,6 +174,12 @@ export default function GlobeView({
   };
 
   const onPolygonClick = (polygon) => {
+    // Intercept click for Quiz "Locate Country" mode
+    if (isQuizMode && quizModeType === 'locate_country') {
+      if (onQuizGlobeClick) onQuizGlobeClick(polygon);
+      return;
+    }
+
     if (selectedCountry && selectedCountry.name === polygon.properties.name) {
       return;
     }
@@ -190,30 +202,74 @@ export default function GlobeView({
         atmosphereColor="#06b6d4"
         atmosphereAltitude={0.15}
         polygonsData={countriesData}
-        polygonAltitude={0.012}
+        polygonAltitude={(d) => {
+          if (activeLayer === 'population' && d.properties.population) {
+            return Math.max(0.012, Math.min(0.1, d.properties.population / 1000000000));
+          }
+          if (activeLayer === 'density' && d.properties.population && d.properties.area) {
+            return Math.max(0.012, Math.min(0.1, (d.properties.population / d.properties.area) / 1000));
+          }
+          return 0.012;
+        }}
         polygonCapColor={(d) => {
+          // Priority 1: Quiz Highlight
+          if (isQuizMode && quizModeType === 'guess_country' && quizTargetCountry && quizTargetCountry.name === d.properties.name) {
+            return 'rgba(234, 179, 8, 0.85)';
+          }
+          
+          // Priority 2: Selection / Comparison Highlights
           if (isCompareMode) {
             const isCompared = compareCountries.some(c => c.name === d.properties.name);
-            if (isCompared) {
-              return 'rgba(236, 72, 153, 0.85)'; // Neon pink for comparison
-            }
-            return isNightMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(120, 144, 156, 0.08)'; 
+            if (isCompared) return 'rgba(236, 72, 153, 0.85)';
+          } else if (selectedCountry && selectedCountry.name === d.properties.name) {
+            return 'rgba(45, 212, 191, 0.85)';
           }
-          if (selectedCountry && selectedCountry.name === d.properties.name) {
-            return 'rgba(45, 212, 191, 0.85)'; // Neon teal fill for selected
+
+          // Priority 3: Data Layers
+          if (activeLayer === 'population') {
+            const pop = d.properties.population;
+            if (!pop) return 'rgba(100, 100, 100, 0.2)';
+            const colorScale = scaleLog().domain([10000, 1400000000]).range(['#fef08a', '#b91c1c']).clamp(true);
+            return colorScale(pop);
           }
+          
+          if (activeLayer === 'density') {
+            const pop = d.properties.population;
+            const area = d.properties.area;
+            if (!pop || !area) return 'rgba(100, 100, 100, 0.2)';
+            const density = pop / area;
+            const colorScale = scaleLog().domain([1, 1000]).range(['#dcfce7', '#064e3b']).clamp(true);
+            return colorScale(density);
+          }
+          
+          if (activeLayer === 'timezones') {
+            const centroid = geoCentroid(d);
+            if (isNaN(centroid[0])) return 'rgba(100, 100, 100, 0.2)';
+            // Geometric approximation: UTC time + Longitude shift
+            const now = new Date();
+            const utcHour = now.getUTCHours() + (now.getUTCMinutes() / 60);
+            let localHour = utcHour + (centroid[0] / 15);
+            if (localHour < 0) localHour += 24;
+            if (localHour >= 24) localHour -= 24;
+            // Day is roughly 6 AM to 6 PM
+            const isDay = localHour >= 6 && localHour <= 18;
+            return isDay ? 'rgba(250, 204, 21, 0.3)' : 'rgba(2, 6, 23, 0.7)';
+          }
+
+          // Default / Borders
           if (hoveredCountry && hoveredCountry.properties.name === d.properties.name) {
-            return 'rgba(34, 211, 238, 0.45)'; // Soft cyan fill for hover
+            return 'rgba(34, 211, 238, 0.45)';
           }
           return isNightMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(120, 144, 156, 0.12)'; 
         }}
         polygonSideColor={() => 'rgba(7, 10, 18, 0.6)'}
         polygonStrokeColor={(d) => {
+          if (isQuizMode && quizModeType === 'guess_country' && quizTargetCountry && quizTargetCountry.name === d.properties.name) {
+            return '#facc15';
+          }
           if (isCompareMode) {
             const isCompared = compareCountries.some(c => c.name === d.properties.name);
-            if (isCompared) {
-              return '#f472b6'; // Pink edge
-            }
+            if (isCompared) return '#f472b6';
             return isNightMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)';
           }
           if (selectedCountry && selectedCountry.name === d.properties.name) {
@@ -222,7 +278,42 @@ export default function GlobeView({
           if (hoveredCountry && hoveredCountry.properties.name === d.properties.name) {
             return '#2dd4bf';
           }
+          if (activeLayer !== 'borders') {
+            return 'rgba(255, 255, 255, 0.05)'; // Dim borders when a layer is active
+          }
           return isNightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.25)';
+        }}
+        polygonLabel={(d) => {
+          if (isQuizMode && quizModeType === 'guess_country') return ''; // Hide label during quiz
+
+          let extraInfo = '';
+          if (activeLayer === 'population' && d.properties.population) {
+            extraInfo = `<div style="font-size: 11px; color: #fbbf24; margin-top: 2px;">Population: ${(d.properties.population / 1000000).toFixed(1)}M</div>`;
+          } else if (activeLayer === 'density' && d.properties.population && d.properties.area) {
+            extraInfo = `<div style="font-size: 11px; color: #34d399; margin-top: 2px;">Density: ${Math.round(d.properties.population / d.properties.area)} / km²</div>`;
+          } else if (activeLayer === 'timezones') {
+            const centroid = geoCentroid(d);
+            if (!isNaN(centroid[0])) {
+              const now = new Date();
+              const utcHour = now.getUTCHours() + (now.getUTCMinutes() / 60);
+              let localHour = utcHour + (centroid[0] / 15);
+              if (localHour < 0) localHour += 24;
+              if (localHour >= 24) localHour -= 24;
+              
+              const hrs = Math.floor(localHour);
+              const mins = Math.floor((localHour - hrs) * 60);
+              const timeStr = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+              
+              extraInfo = `<div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Local Time: ~${timeStr}</div>`;
+            }
+          }
+
+          return `
+            <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); font-family: sans-serif;">
+              <b style="color: white; font-size: 13px;">${d.properties.name}</b>
+              ${extraInfo}
+            </div>
+          `;
         }}
         onPolygonHover={onPolygonHover}
         onPolygonClick={onPolygonClick}

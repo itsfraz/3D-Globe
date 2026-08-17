@@ -10,6 +10,9 @@ export default function CommandPalette({
   onRandomCountry,
   onOpenFavorites,
   onOpenCompare,
+  onOpenQuiz,
+  onOpenAIGuide,
+  onOpenLayers,
   isNightMode,
   onToggleNightMode,
   showArcs,
@@ -54,11 +57,12 @@ export default function CommandPalette({
     { id: 'random', label: 'Explore Random Country', icon: <Shuffle size={16} className="text-teal-400" />, action: onRandomCountry },
     { id: 'favorites', label: 'Open Favorites', icon: <Heart size={16} className="text-pink-400" />, action: onOpenFavorites },
     { id: 'compare', label: 'Compare Countries', icon: <Scale size={16} className="text-purple-400" />, action: onOpenCompare },
-    { id: 'quiz', label: 'Start Geography Quiz', icon: <GraduationCap size={16} className="text-yellow-400" />, action: () => console.log('Quiz') },
-    { id: 'ai', label: 'Open AI Guide', icon: <Sparkles size={16} className="text-blue-400" />, action: () => console.log('AI') },
+    { id: 'quiz', label: 'Start Geography Quiz', icon: <GraduationCap size={16} className="text-yellow-400" />, action: onOpenQuiz },
+    { id: 'ai', label: 'Open AI World Guide', icon: <Sparkles size={16} className="text-blue-400" />, action: onOpenAIGuide },
+    { id: 'layers_panel', label: 'Open Global Layers', icon: <Layers size={16} className="text-emerald-400" />, action: onOpenLayers },
     { id: 'night', label: isNightMode ? 'Disable Night Mode' : 'Enable Night Mode', icon: isNightMode ? <Sun size={16} className="text-orange-400" /> : <Moon size={16} className="text-indigo-400" />, action: onToggleNightMode },
-    { id: 'layers', label: showArcs ? 'Hide Live Routes' : 'Show Live Routes', icon: <Layers size={16} className="text-cyan-400" />, action: onToggleArcs },
-  ], [isNightMode, showArcs, onRandomCountry, onOpenFavorites, onOpenCompare, onToggleNightMode, onToggleArcs]);
+    { id: 'routes', label: showArcs ? 'Hide Live Routes' : 'Show Live Routes', icon: <Globe2 size={16} className="text-cyan-400" />, action: onToggleArcs },
+  ], [isNightMode, showArcs, onRandomCountry, onOpenFavorites, onOpenCompare, onOpenQuiz, onOpenAIGuide, onOpenLayers, onToggleNightMode, onToggleArcs]);
 
   // Filter countries and actions
   const results = useMemo(() => {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, Users, Coins, Sparkles, Clock, BookOpen, Heart, Map, Globe } from 'lucide-react';
-import AIChat from '../ai/AIChat';
+import { X, Building2, Users, Coins, Clock, BookOpen, Heart, Map, Globe } from 'lucide-react';
 import { useCountryDetails } from '../../hooks/useCountryDetails';
 import { geoCentroid } from 'd3-geo';
 
@@ -227,18 +226,7 @@ export default function CountryInfoPanel({ country, onClose, userJourney, countr
               </div>
             )}
 
-            {/* AI Assistant Chat Section */}
-            <div className="border-t border-white/10 pt-5 flex-1 flex flex-col min-h-[340px]">
-              <div className="flex items-center gap-2 mb-4 shrink-0">
-                <Sparkles className="text-teal-400" size={18} />
-                <h3 className="text-teal-300 font-bold text-base tracking-wide">
-                  Ask AI Guide about {country.name}
-                </h3>
-              </div>
-
-              <AIChat countryName={country.name} />
-            </div>
-
+            {/* Removed inline AI Assistant Chat in favor of global AI World Guide */}
           </div>
         </motion.div>
       )}

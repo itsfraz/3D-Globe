@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, Map, Users, CircleDollarSign, Languages, Globe, Scale, Sparkles } from 'lucide-react';
+import { X, Search, Map, Users, CircleDollarSign, Languages, Globe, Scale } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AICompareChat from './AICompareChat';
 import { useCountryDetails } from '../../hooks/useCountryDetails';
 
 // Simple Search Dropdown Component
@@ -215,14 +214,7 @@ function ComparisonView({ c1, c2 }) {
         />
       </div>
 
-      {/* AI Comparison Chat */}
-      <div className="flex-1 min-h-[400px] flex flex-col">
-        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-          <Sparkles size={16} className="text-pink-400" />
-          AI Comparison Engine
-        </h3>
-        <AICompareChat countryA={c1.name} countryB={c2.name} />
-      </div>
+      {/* Removed inline AI Comparison Chat in favor of global AI World Guide */}
 
     </div>
   );
