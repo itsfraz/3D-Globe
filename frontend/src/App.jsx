@@ -4,6 +4,7 @@ import CountryInfoPanel from './components/country/CountryInfoPanel';
 import CommandPalette from './components/search/CommandPalette';
 import JourneyPanel from './components/journey/JourneyPanel';
 import ComparePanel from './components/compare/ComparePanel';
+import ExploreMode from './components/explore/ExploreMode';
 import { Globe2, Sparkles, Heart, User, Search, Menu, Command } from 'lucide-react';
 import { useGlobeData } from './hooks/useGlobeData';
 import { useUserJourney } from './hooks/useUserJourney';
@@ -25,6 +26,7 @@ function App() {
   const [loadingQuoteIndex, setLoadingQuoteIndex] = useState(0);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isJourneyPanelOpen, setIsJourneyPanelOpen] = useState(false);
+  const [isExploreModeOpen, setIsExploreModeOpen] = useState(false);
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [compareCountries, setCompareCountries] = useState([]);
   const [isNightMode, setIsNightMode] = useState(false);
@@ -144,7 +146,12 @@ function App() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1 mr-2 bg-white/5 rounded-full p-1 border border-white/5">
-            <button className="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/10 transition-colors">Explore</button>
+            <button 
+              onClick={() => setIsExploreModeOpen(true)}
+              className="px-3 py-1.5 rounded-full text-xs font-bold text-teal-300 hover:text-white hover:bg-teal-500/20 transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles size={12} /> Explore the World
+            </button>
             <button 
               onClick={() => setIsCompareMode(true)}
               className="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
@@ -185,6 +192,8 @@ function App() {
         country={selectedCountry} 
         onClose={() => setSelectedCountry(null)} 
         userJourney={userJourney}
+        countriesData={countriesData}
+        onSelectCountry={setSelectedCountry}
       />
 
       {/* Background Aura */}
@@ -244,6 +253,15 @@ function App() {
         compareCountries={compareCountries}
         setCompareCountries={setCompareCountries}
         countriesData={countriesData}
+      />
+
+      {/* Global Explore Mode */}
+      <ExploreMode 
+        isOpen={isExploreModeOpen}
+        onClose={() => setIsExploreModeOpen(false)}
+        countriesData={countriesData}
+        onSelectCountry={setSelectedCountry}
+        userJourney={userJourney}
       />
     </div>
   );

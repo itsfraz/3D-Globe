@@ -3,11 +3,48 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, Users, Coins, Sparkles, Clock, BookOpen, Heart, Map, Globe } from 'lucide-react';
 import AIChat from '../ai/AIChat';
 import { useCountryDetails } from '../../hooks/useCountryDetails';
+import { geoCentroid } from 'd3-geo';
 
-export default function CountryInfoPanel({ country, onClose, userJourney }) {
+function getDistance(c1, c2) {
+  const R = 6371; // km
+  const dLat = (c2[1] - c1[1]) * Math.PI / 180;
+  const dLon = (c2[0] - c1[0]) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(c1[1] * Math.PI / 180) * Math.cos(c2[1] * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return R * c;
+}
+
+export default function CountryInfoPanel({ country, onClose, userJourney, countriesData, onSelectCountry }) {
   const { countryDetails, wikiData, localTime, loading, wikiLoading } = useCountryDetails(country);
 
   const { isFavorite, toggleFavorite, addExploration } = userJourney || {};
+
+  const nearbyCountries = React.useMemo(() => {
+    if (!country || !countriesData) return [];
+    const currentFeature = countriesData.find(f => f.properties.name === country.name);
+    if (!currentFeature) return [];
+    
+    const center = geoCentroid(currentFeature);
+    if (isNaN(center[0])) return [];
+
+    const distances = countriesData
+      .filter(f => f.properties.name !== country.name)
+      .map(f => {
+        const c = geoCentroid(f);
+        if (isNaN(c[0])) return null;
+        return {
+          country: f.properties,
+          dist: getDistance(center, c)
+        };
+      })
+      .filter(Boolean);
+
+    distances.sort((a, b) => a.dist - b.dist);
+    return distances.slice(0, 5);
+  }, [country, countriesData]);
 
   // Log exploration side-effect
   React.useEffect(() => {
@@ -154,6 +191,38 @@ export default function CountryInfoPanel({ country, onClose, userJourney }) {
                   <p className="text-xs text-gray-300 leading-relaxed overflow-hidden text-ellipsis line-clamp-5">
                     {wikiData.extract}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Nearby Countries Section */}
+            {nearbyCountries.length > 0 && (
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Map className="text-teal-400" size={16} />
+                  <h3 className="text-sm font-bold text-white tracking-wide">Nearby Countries</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {nearbyCountries.map(({ country: neighbor }) => {
+                    const nIso = neighbor.iso_a2 || neighbor.iso_a3;
+                    return (
+                      <button
+                        key={neighbor.name}
+                        onClick={() => onSelectCountry && onSelectCountry(neighbor)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-teal-500/30 transition-all"
+                      >
+                        {nIso && (
+                          <img 
+                            src={`https://flagcdn.com/w20/${nIso.toLowerCase()}.png`} 
+                            className="w-4 rounded-sm shadow-sm" 
+                            alt="" 
+                            onError={(e) => e.target.style.display='none'}
+                          />
+                        )}
+                        <span className="text-xs font-medium text-gray-300">{neighbor.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
