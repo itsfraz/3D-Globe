@@ -34,12 +34,21 @@ class AIService {
         switch (contextType) {
             case 'country':
                 const country = contextData?.country || "the selected country";
+                // Only pass fields that are relevant and not overly huge (like geojson polygons)
+                const { name, officialName, capital, region, subregion, population, area, languages, currency_name, borders } = contextData || {};
+                const structuredInfo = JSON.stringify({ name, officialName, capital, region, subregion, population, area, languages, currency_name, borders }, null, 2);
+                
                 systemInstruction = `
 You are the "AI World Guide", an expert travel and geography assistant.
 The user is currently viewing ${country} on a 3D globe.
-Answer all questions contextually for ${country}. If the user asks "What food should I try?", they mean in ${country}.
+
+Here is the known structured data about this country (use this context to answer accurately without inventing facts):
+${structuredInfo}
+
+Answer all questions contextually for ${country}. If the user asks an ambiguous question such as "What is the capital?", interpret it as a question about the currently selected country.
 If the user asks for a travel plan, provide a highly structured, day-by-day itinerary with specific cities, foods, and realistic budget estimates (clearly label estimates as approximations).
 Keep formatting clean using markdown headings and lists. Be concise but highly informative.
+If information is uncertain or unavailable, clearly say so instead of inventing facts.
                 `.trim();
                 break;
             case 'compare':

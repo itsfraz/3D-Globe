@@ -8,6 +8,7 @@ import ExploreMode from './components/explore/ExploreMode';
 import GeoChallenge from './components/quiz/GeoChallenge';
 import AIWorldGuide from './components/ai/AIWorldGuide';
 import GlobalLayersPanel from './components/layers/GlobalLayersPanel';
+import MobileSidebar from './components/navigation/MobileSidebar';
 import { Globe2, Sparkles, Heart, User, Search, Menu, Command, Trophy, Layers } from 'lucide-react';
 import { useGlobeData } from './hooks/useGlobeData';
 import { useUserJourney } from './hooks/useUserJourney';
@@ -45,6 +46,8 @@ function App() {
   
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
   const [activeLayer, setActiveLayer] = useState('borders');
+  
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const userJourney = useUserJourney();
 
@@ -133,15 +136,15 @@ function App() {
       />
       
       {/* Top Floating Glass Header */}
-      <header className="fixed top-4 left-4 right-4 sm:left-8 sm:right-8 z-30 flex items-center justify-between px-4 py-3 sm:px-6 sm:py-0 sm:h-16 glass-panel rounded-2xl sm:rounded-full pointer-events-auto transition-all">
+      <header className="fixed top-4 left-4 right-4 sm:left-8 sm:right-8 z-30 flex items-center justify-between px-3 py-3 sm:px-6 sm:py-0 sm:h-16 glass-panel rounded-2xl sm:rounded-full pointer-events-auto transition-all shadow-lg">
         
         {/* LEFT: Brand Logo & Name */}
-        <div className="flex items-center gap-3 w-auto sm:w-[280px]">
-          <div className="w-10 h-10 rounded-full bg-teal-500/10 border border-teal-400/20 flex items-center justify-center glow-subtle shrink-0">
-            <Globe2 className="text-teal-400 animate-pulse-glow" size={22} />
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-teal-500/10 border border-teal-400/20 flex items-center justify-center glow-subtle shrink-0">
+            <Globe2 className="text-teal-400 animate-pulse-glow" size={20} />
           </div>
           <div className="flex-col hidden sm:flex">
-            <h1 className="text-[16px] sm:text-[18px] font-bold tracking-tight gradient-text whitespace-nowrap leading-none flex items-center gap-2">
+            <h1 className="text-[15px] sm:text-[18px] font-bold tracking-tight gradient-text whitespace-nowrap leading-none flex items-center gap-2">
               World Globe AI
               <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded-full bg-white/5 text-teal-300 border border-white/10 uppercase">
                 AI 3D
@@ -151,17 +154,17 @@ function App() {
         </div>
 
         {/* CENTER: Search Bar Trigger Button */}
-        <div className="flex-1 max-w-xl flex justify-center transition-all duration-300">
+        <div className="flex-1 max-w-[300px] sm:max-w-[400px] xl:max-w-[500px] flex justify-center transition-all duration-300 mx-3 sm:mx-6 min-w-[120px]">
           <button 
             onClick={() => setIsCommandPaletteOpen(true)}
-            className="w-full max-w-[400px] bg-[#0d1322]/80 hover:bg-[#0d1322] border border-white/10 rounded-xl py-2 px-4 flex items-center justify-between text-sm text-gray-500 transition-all shadow-2xl backdrop-blur-2xl group"
+            className="w-full bg-[#0d1322]/80 hover:bg-[#0d1322] border border-white/10 hover:border-teal-500/30 rounded-xl sm:rounded-full py-2 px-3 sm:px-4 flex items-center justify-between text-sm text-gray-400 transition-all shadow-inner backdrop-blur-xl group"
           >
-            <div className="flex items-center gap-2">
-              <Search size={16} className="text-gray-500 group-hover:text-teal-500 transition-colors" />
-              <span className="hidden sm:inline">Search countries, cities or actions...</span>
-              <span className="inline sm:hidden">Search...</span>
+            <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+              <Search size={16} className="text-gray-400 group-hover:text-teal-400 transition-colors shrink-0" />
+              <span className="hidden sm:inline truncate">Search countries, cities or actions...</span>
+              <span className="inline sm:hidden truncate text-xs">Search...</span>
             </div>
-            <div className="hidden sm:flex items-center gap-1 text-[10px] font-medium bg-white/10 px-1.5 py-0.5 rounded border border-white/10">
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-medium bg-white/10 px-1.5 py-0.5 rounded border border-white/10 shrink-0 ml-2">
               <Command size={10} className="text-gray-400" />
               <span className="text-gray-400">K</span>
             </div>
@@ -169,10 +172,10 @@ function App() {
         </div>
 
         {/* RIGHT: Navigation & Actions */}
-        <div className="flex items-center justify-end gap-2 sm:gap-3 w-auto sm:w-[280px]">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1 mr-2 bg-white/5 rounded-full p-1 border border-white/5">
+          <div className="hidden xl:flex items-center gap-1 mr-2 bg-white/5 rounded-full p-1 border border-white/5">
             <button 
               onClick={() => setIsExploreModeOpen(true)}
               className="px-3 py-1.5 rounded-full text-xs font-bold text-teal-300 hover:text-white hover:bg-teal-500/20 transition-colors flex items-center gap-1.5"
@@ -201,20 +204,20 @@ function App() {
 
           <button 
             onClick={() => setIsLayersPanelOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all font-medium text-sm"
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all font-medium text-xs sm:text-sm"
           >
-            <Layers size={16} />
+            <Layers size={14} className="sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Layers</span>
           </button>
           
           <button 
             onClick={() => setIsJourneyPanelOpen(true)}
-            className="hidden sm:flex p-2.5 text-gray-400 hover:text-teal-300 hover:bg-white/10 rounded-full transition-colors relative" 
+            className="hidden sm:flex p-2 text-gray-400 hover:text-teal-300 hover:bg-white/10 rounded-full transition-colors relative border border-transparent" 
             title="My Journey"
           >
-            <Heart size={18} />
+            <Heart size={16} className="sm:w-[18px] sm:h-[18px]" />
             {userJourney.favorites.length > 0 && (
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-teal-400 rounded-full"></span>
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-teal-400 rounded-full"></span>
             )}
           </button>
           
@@ -223,12 +226,19 @@ function App() {
             className="hidden sm:flex p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors border border-white/10" 
             title="Profile"
           >
-            <User size={18} />
+            <User size={16} className="sm:w-[18px] sm:h-[18px]" />
           </button>
 
           {/* Mobile Menu */}
-          <button className="sm:hidden p-2 text-gray-300 hover:text-white bg-white/5 rounded-full">
-            <Menu size={18} />
+          <button 
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={isMobileSidebarOpen}
+            aria-controls="mobile-sidebar"
+            className="xl:hidden p-1.5 sm:p-2 text-gray-300 hover:text-white bg-white/5 rounded-full border border-transparent hover:border-white/10 transition-colors"
+          >
+            <Menu size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
       </header>
@@ -333,6 +343,19 @@ function App() {
         setQuizTargetCountry={setQuizTargetCountry}
         quizClickedPolygon={quizClickedPolygon}
         clearQuizClickedPolygon={() => setQuizClickedPolygon(null)}
+      />
+
+      {/* Global Mobile Sidebar */}
+      <MobileSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        onOpenExplore={() => setIsExploreModeOpen(true)}
+        onOpenCompare={() => setIsCompareMode(true)}
+        onOpenQuiz={() => setIsQuizModeOpen(true)}
+        onOpenAIGuide={() => setIsAIGuideOpen(true)}
+        onOpenLayers={() => setIsLayersPanelOpen(true)}
+        onOpenJourney={() => setIsJourneyPanelOpen(true)}
+        userJourneyFavoritesCount={userJourney?.favorites?.length || 0}
       />
     </div>
   );

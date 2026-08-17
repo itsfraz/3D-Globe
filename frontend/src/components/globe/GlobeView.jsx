@@ -77,6 +77,7 @@ export default function GlobeView({
       controls.autoRotateSpeed = 0.6;
       controls.enableDamping = true;
       controls.dampingFactor = 0.1;
+      controls.enablePan = false;
     }
 
     return () => window.removeEventListener('resize', handleResize);

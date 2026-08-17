@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Sparkles, Send, MapPin, Scale, RefreshCw, Copy, CheckCircle2, Navigation, Coffee, Landmark, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import { useCountryDetails } from '../../hooks/useCountryDetails';
 
 const SUGGESTIONS = [
   { icon: <Navigation size={14} className="text-blue-400" />, label: "Plan a Trip" },
@@ -25,16 +26,25 @@ export default function AIWorldGuide({
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  const { countryDetails } = useCountryDetails(selectedCountry);
+
   // Derive Context
   const context = useMemo(() => {
     if (isCompareMode && compareCountries.length === 2) {
       return { type: 'compare', data: { countryA: compareCountries[0].name, countryB: compareCountries[1].name } };
     }
     if (selectedCountry) {
-      return { type: 'country', data: { country: selectedCountry.name } };
+      return { 
+        type: 'country', 
+        data: { 
+          country: selectedCountry.name,
+          ...selectedCountry,
+          ...(countryDetails || {})
+        } 
+      };
     }
     return { type: 'global', data: null };
-  }, [selectedCountry, compareCountries, isCompareMode]);
+  }, [selectedCountry, compareCountries, isCompareMode, countryDetails]);
 
   // Context Label for Header
   const contextLabel = useMemo(() => {
@@ -43,12 +53,15 @@ export default function AIWorldGuide({
     return "Exploring the World";
   }, [context]);
 
-  // Reset/Welcome Message on Context Change (only if chat is empty or context changes drastically)
+  // Reset/Welcome Message on Context Change
+  const prevCountryRef = useRef(selectedCountry?.name);
   useEffect(() => {
-    // We could clear chat here if context changes, but maybe user wants to keep it?
-    // The prompt says "The AI should understand: currently selected country, previous conversation, comparison context".
-    // So we don't clear the chat automatically. The backend receives the current context.
-  }, [context]);
+    const currentName = selectedCountry?.name;
+    if (currentName !== prevCountryRef.current) {
+      setMessages([]);
+      prevCountryRef.current = currentName;
+    }
+  }, [selectedCountry?.name]);
 
   // Auto-scroll
   useEffect(() => {
@@ -126,7 +139,7 @@ export default function AIWorldGuide({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="fixed inset-x-4 bottom-4 top-24 md:inset-auto md:bottom-8 md:right-8 md:top-auto md:w-[450px] md:h-[600px] z-50 bg-[#0d1322]/95 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="fixed inset-x-4 bottom-4 top-24 md:inset-auto md:bottom-6 md:right-6 md:top-auto md:w-[400px] lg:w-[450px] md:h-[600px] md:max-h-[calc(100vh-110px)] z-50 bg-[#0d1322]/95 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10 flex flex-col gap-1 shrink-0 bg-white/5 relative overflow-hidden">
@@ -168,13 +181,23 @@ export default function AIWorldGuide({
               <div className="w-16 h-16 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mb-4 glow-subtle">
                 <Sparkles size={28} className="text-teal-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">What would you like to explore?</h3>
+              <h3 className="text-xl font-bold text-white mb-2">
+                {context.type === 'country' ? `✨ ${context.data.country} AI` : 'What would you like to explore?'}
+              </h3>
               <p className="text-gray-400 text-sm mb-8 px-4">
-                Ask me about history, culture, travel plans, or comparisons. I adapt to whatever you're looking at on the globe.
+                {context.type === 'country' 
+                  ? `👋 Hi! I'm your AI guide for ${context.data.country}. Ask me anything about its history, culture, geography, travel, food, wildlife, or interesting facts.`
+                  : "Ask me about history, culture, travel plans, or comparisons. I adapt to whatever you're looking at on the globe."
+                }
               </p>
               
               <div className="grid grid-cols-2 gap-2 w-full max-w-sm px-2">
-                {SUGGESTIONS.map((s, i) => (
+                {(context.type === 'country' ? [
+                  { icon: <MapPin size={14} className="text-blue-400" />, label: "What is the capital?" },
+                  { icon: <Globe size={14} className="text-teal-400" />, label: "Languages spoken?" },
+                  { icon: <Navigation size={14} className="text-purple-400" />, label: "Places to visit?" },
+                  { icon: <Coffee size={14} className="text-orange-400" />, label: "Famous food?" }
+                ] : SUGGESTIONS).map((s, i) => (
                   <button 
                     key={i}
                     onClick={() => handleSend(s.label)}
@@ -251,7 +274,7 @@ export default function AIWorldGuide({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything..."
+              placeholder={context.type === 'country' ? `Ask anything about ${context.data.country}...` : "Ask anything..."}
               className="w-full bg-transparent text-white placeholder-gray-500 text-sm p-3.5 pr-12 focus:outline-none resize-none min-h-[48px] max-h-[120px] custom-scrollbar"
               rows={1}
               style={{

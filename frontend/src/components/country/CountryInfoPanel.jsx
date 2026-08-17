@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, Users, Coins, Clock, BookOpen, Heart, Map, Globe } from 'lucide-react';
+import { X, Building2, Users, Coins, Clock, BookOpen, Heart, Map, Globe, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { useCountryDetails } from '../../hooks/useCountryDetails';
 import { geoCentroid } from 'd3-geo';
+import InlineAIChat from '../ai/InlineAIChat';
 
 function getDistance(c1, c2) {
   const R = 6371; // km
@@ -18,8 +19,14 @@ function getDistance(c1, c2) {
 
 export default function CountryInfoPanel({ country, onClose, userJourney, countriesData, onSelectCountry }) {
   const { countryDetails, wikiData, localTime, loading, wikiLoading } = useCountryDetails(country);
+  const [isChatOpen, setIsChatOpen] = React.useState(false);
 
   const { isFavorite, toggleFavorite, addExploration } = userJourney || {};
+
+  // Close chat when country changes
+  React.useEffect(() => {
+    setIsChatOpen(false);
+  }, [country?.name]);
 
   const nearbyCountries = React.useMemo(() => {
     if (!country || !countriesData) return [];
@@ -85,7 +92,7 @@ export default function CountryInfoPanel({ country, onClose, userJourney, countr
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: "100%", opacity: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-0 right-0 md:top-20 md:right-6 md:bottom-6 w-full md:w-[420px] z-40 flex flex-col bg-[#0d1322]/85 backdrop-blur-3xl md:rounded-2xl border-t md:border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden"
+          className="fixed bottom-0 right-0 md:top-20 md:right-6 md:bottom-6 w-full md:w-[420px] max-h-[85vh] md:max-h-none z-40 flex flex-col bg-[#0d1322]/85 backdrop-blur-3xl rounded-t-3xl md:rounded-2xl border-t md:border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden"
         >
           {/* Mobile Drag Handle */}
           <div className="flex md:hidden items-center justify-center pt-3 pb-1">
@@ -226,7 +233,46 @@ export default function CountryInfoPanel({ country, onClose, userJourney, countr
               </div>
             )}
 
-            {/* Removed inline AI Assistant Chat in favor of global AI World Guide */}
+            {/* Inline AI Assistant */}
+            <div className="flex flex-col gap-2 mt-2">
+              <button
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                className={`group relative overflow-hidden bg-gradient-to-r from-teal-500/10 to-blue-500/10 hover:from-teal-500/20 hover:to-blue-500/20 border ${isChatOpen ? 'border-teal-500/40 rounded-t-2xl rounded-b-sm' : 'border-teal-500/20 rounded-2xl'} p-4 flex flex-col gap-1 transition-all shadow-[0_0_15px_rgba(45,212,191,0.05)] text-left`}
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-400/10 blur-3xl rounded-full pointer-events-none" />
+                <div className="flex items-center justify-between w-full relative z-10">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="text-teal-400" size={18} />
+                    <h3 className="text-sm font-bold text-white tracking-wide">
+                      Ask AI About {country.name}
+                    </h3>
+                  </div>
+                  {isChatOpen ? (
+                    <ChevronDown size={16} className="text-teal-400 transition-all" />
+                  ) : (
+                    <ChevronRight size={16} className="text-gray-400 group-hover:text-teal-300 group-hover:translate-x-1 transition-all" />
+                  )}
+                </div>
+                {!isChatOpen && (
+                  <p className="text-xs text-gray-400 mt-1 relative z-10">
+                    Ask anything about this country's history, culture, or travel spots.
+                  </p>
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {isChatOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <InlineAIChat country={country} countryDetails={countryDetails} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       )}
