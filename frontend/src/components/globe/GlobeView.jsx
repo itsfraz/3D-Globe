@@ -1,9 +1,20 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Globe from 'react-globe.gl';
 import { geoCentroid } from 'd3-geo';
-import { Play, Pause, ZoomIn, ZoomOut, RotateCcw, Compass } from 'lucide-react';
+import { Play, Pause, ZoomIn, ZoomOut, RotateCcw, Compass, Moon, Sun, Layers } from 'lucide-react';
 
-export default function GlobeView({ selectedCountry, onSelectCountry, countriesData, onGlobeReady }) {
+export default function GlobeView({ 
+  selectedCountry, 
+  onSelectCountry, 
+  compareCountries = [],
+  isCompareMode = false,
+  countriesData, 
+  onGlobeReady,
+  isNightMode,
+  setIsNightMode,
+  showArcs,
+  setShowArcs
+}) {
   const globeRef = useRef();
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
@@ -11,8 +22,6 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
   });
   const [hoveredCountry, setHoveredCountry] = useState(null);
   const [isRotating, setIsRotating] = useState(true);
-  const [isNightMode, setIsNightMode] = useState(false);
-  const [showArcs, setShowArcs] = useState(true);
   const [arcsData, setArcsData] = useState([]);
 
   // Track user interaction to pause/resume rotation
@@ -44,7 +53,7 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
       }
       setArcsData(generatedArcs);
     }
-  }, [countriesData]);
+  }, [countriesData, arcsData.length]);
 
   // Handle window resize dynamically
   useEffect(() => {
@@ -67,9 +76,35 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Zoom to selected country whenever it changes
+  // Zoom to selected or compared countries
   useEffect(() => {
-    if (selectedCountry && globeRef.current && countriesData) {
+    if (isCompareMode && compareCountries.length === 2 && globeRef.current && countriesData) {
+      const f1 = countriesData.find(f => f.properties.name === compareCountries[0].name);
+      const f2 = countriesData.find(f => f.properties.name === compareCountries[1].name);
+      
+      if (f1 && f2) {
+        const c1 = geoCentroid(f1);
+        const c2 = geoCentroid(f2);
+        
+        // Calculate midpoint
+        // Handle wrap-around for longitude if difference > 180
+        let lngDiff = c2[0] - c1[0];
+        if (lngDiff > 180) lngDiff -= 360;
+        else if (lngDiff < -180) lngDiff += 360;
+        
+        const midLng = c1[0] + (lngDiff / 2);
+        const midLat = (c1[1] + c2[1]) / 2;
+        
+        // Rough heuristic for distance
+        const maxDiff = Math.max(Math.abs(c1[1] - c2[1]), Math.abs(lngDiff));
+        const altitude = Math.min(2.8, Math.max(1.2, maxDiff * 0.025 + 0.5));
+
+        globeRef.current.pointOfView(
+          { lat: midLat, lng: midLng, altitude: altitude },
+          1500
+        );
+      }
+    } else if (!isCompareMode && selectedCountry && globeRef.current && countriesData) {
       const feature = countriesData.find(f => f.properties.name === selectedCountry.name);
       if (feature) {
         const centroid = geoCentroid(feature);
@@ -81,7 +116,7 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
         }
       }
     }
-  }, [selectedCountry, countriesData]);
+  }, [selectedCountry, compareCountries, isCompareMode, countriesData]);
 
   const toggleRotation = () => {
     if (!globeRef.current) return;
@@ -152,11 +187,18 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
         height={windowSize.height}
         globeImageUrl={isNightMode ? "//unpkg.com/three-globe/example/img/earth-night.jpg" : "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"}
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        atmosphereColor="#2dd4bf"
-        atmosphereAltitude={0.16}
+        atmosphereColor="#06b6d4"
+        atmosphereAltitude={0.15}
         polygonsData={countriesData}
         polygonAltitude={0.012}
         polygonCapColor={(d) => {
+          if (isCompareMode) {
+            const isCompared = compareCountries.some(c => c.name === d.properties.name);
+            if (isCompared) {
+              return 'rgba(236, 72, 153, 0.85)'; // Neon pink for comparison
+            }
+            return isNightMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(120, 144, 156, 0.08)'; 
+          }
           if (selectedCountry && selectedCountry.name === d.properties.name) {
             return 'rgba(45, 212, 191, 0.85)'; // Neon teal fill for selected
           }
@@ -167,6 +209,13 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
         }}
         polygonSideColor={() => 'rgba(7, 10, 18, 0.6)'}
         polygonStrokeColor={(d) => {
+          if (isCompareMode) {
+            const isCompared = compareCountries.some(c => c.name === d.properties.name);
+            if (isCompared) {
+              return '#f472b6'; // Pink edge
+            }
+            return isNightMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)';
+          }
           if (selectedCountry && selectedCountry.name === d.properties.name) {
             return '#5eead4';
           }
@@ -187,28 +236,28 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
         arcDashInitialGap={() => Math.random() * 5}
         arcDashAnimateTime={2000}
         arcAltitude={() => Math.random() * 0.3 + 0.1}
-        arcStroke={0.5}
+        arcStroke={0.3}
       />
 
       {/* Floating Interactive Controls HUD */}
-      <div className="fixed bottom-6 left-6 z-30 flex flex-col gap-3 pointer-events-auto">
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pointer-events-auto bg-[#0d1322]/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl p-1.5 px-3">
         
         {/* Main Controls */}
-        <div className="glass-pill p-1.5 flex items-center gap-1 rounded-full shadow-2xl">
+        <div className="flex items-center gap-1">
           <button 
             onClick={toggleRotation} 
             title={isRotating ? "Pause Rotation" : "Auto Rotate"}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-teal-300 hover:bg-white/10 transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             {isRotating ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </button>
           
-          <div className="w-px h-5 bg-white/10" />
+          <div className="w-px h-4 bg-white/10 mx-1" />
 
           <button 
             onClick={() => handleZoom(-0.5)} 
             title="Zoom In"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-teal-300 hover:bg-white/10 transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ZoomIn size={16} />
           </button>
@@ -216,46 +265,48 @@ export default function GlobeView({ selectedCountry, onSelectCountry, countriesD
           <button 
             onClick={() => handleZoom(0.5)} 
             title="Zoom Out"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-teal-300 hover:bg-white/10 transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ZoomOut size={16} />
           </button>
 
-          <div className="w-px h-5 bg-white/10" />
+          <div className="w-px h-4 bg-white/10 mx-1" />
 
           <button 
             onClick={handleResetView} 
             title="Reset Globe View"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-teal-300 hover:bg-white/10 transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <RotateCcw size={15} />
           </button>
         </div>
 
+        <div className="w-px h-4 bg-white/10 mx-1" />
+
         {/* Feature Toggles */}
-        <div className="glass-pill p-1.5 flex items-center gap-1 rounded-full shadow-2xl">
+        <div className="flex items-center gap-1">
           <button 
             onClick={() => setIsNightMode(!isNightMode)} 
             title="Toggle Night Mode"
-            className={`px-3 py-1.5 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${isNightMode ? 'bg-teal-500/20 text-teal-300' : 'text-gray-400 hover:text-gray-200 hover:bg-white/10'}`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isNightMode ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
-            Night Mode
+            {isNightMode ? <Moon size={15} /> : <Sun size={15} />}
           </button>
-          <div className="w-px h-4 bg-white/10" />
           <button 
             onClick={() => setShowArcs(!showArcs)} 
-            title="Toggle Data Arcs"
-            className={`px-3 py-1.5 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${showArcs ? 'bg-teal-500/20 text-teal-300' : 'text-gray-400 hover:text-gray-200 hover:bg-white/10'}`}
+            title="Toggle Live Routes"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${showArcs ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
-            Live Routes
+            <Layers size={15} />
           </button>
         </div>
 
-        {/* Status Badge */}
-        <div className="hidden sm:flex glass-pill px-3 py-2 rounded-full items-center gap-2 text-xs text-gray-300 self-start">
-          <Compass size={14} className="text-teal-400 animate-spin-slow" />
-          <span>{countriesData?.length || 0} Sovereign Nations</span>
-        </div>
+      </div>
+      
+      {/* Status Badge */}
+      <div className="fixed bottom-6 left-6 hidden sm:flex glass-pill px-3 py-2 rounded-full items-center gap-2 text-xs font-medium text-gray-400">
+        <Compass size={14} className="text-teal-400 animate-spin-slow" />
+        <span>{countriesData?.length || 0} Sovereign Nations</span>
       </div>
     </div>
   );

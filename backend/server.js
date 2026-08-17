@@ -95,6 +95,54 @@ If asked something unrelated to ${country}, its geography, culture, or history, 
     }
 });
 
+// Compare endpoint
+app.post('/api/compare', apiLimiter, async (req, res) => {
+    const { countryA, countryB, question, chatHistory } = req.body;
+
+    if (!countryA || !countryB || typeof countryA !== 'string' || typeof countryB !== 'string') {
+        return res.status(400).json({ error: "Missing or invalid country fields." });
+    }
+    if (!question || typeof question !== 'string' || question.trim() === '') {
+        return res.status(400).json({ error: "Missing or invalid 'question' field." });
+    }
+
+    try {
+        const systemInstruction = `
+You are an impartial, analytical AI guide comparing two countries: ${countryA} and ${countryB}.
+The user is currently viewing a side-by-side comparison of these two countries on an interactive globe app.
+Answer all questions by contrasting and comparing ${countryA} and ${countryB}.
+Keep your answers concise, structured (using bullet points or short paragraphs), and factual.
+Highlight key differences and similarities. If asked about a specific topic (e.g., travel, cost of living, tech jobs), provide a balanced view.
+`.trim();
+
+        const formattedHistory = (chatHistory || []).map(msg => ({
+            role: msg.role === 'model' ? 'assistant' : 'user',
+            content: msg.text
+        }));
+
+        while (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
+            formattedHistory.shift();
+        }
+
+        const messages = [
+            { role: "system", content: systemInstruction },
+            ...formattedHistory,
+            { role: "user", content: question }
+        ];
+
+        const chatCompletion = await groq.chat.completions.create({
+            messages: messages,
+            model: "openai/gpt-oss-20b",
+        });
+        
+        res.json({ reply: chatCompletion.choices[0]?.message?.content || "" });
+
+    } catch (error) {
+        console.error("Groq Compare API Error:", error);
+        res.status(500).json({ error: "Something went wrong, please try again." });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
 });
