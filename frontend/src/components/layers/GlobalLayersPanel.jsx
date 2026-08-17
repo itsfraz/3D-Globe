@@ -7,14 +7,19 @@ const AVAILABLE_LAYERS = [
   { id: 'population', label: 'Population', icon: <Users size={14} />, type: 'static' },
   { id: 'density', label: 'Population Density', icon: <Map size={14} />, type: 'static' },
   { id: 'timezones', label: 'Time Zones (Day/Night)', icon: <Clock size={14} />, type: 'live' },
-  { id: 'gdp', label: 'GDP', icon: <DollarSign size={14} />, type: 'api_required' },
+  { id: 'gdp', label: 'GDP', icon: <DollarSign size={14} />, type: 'dynamic' },
   { id: 'weather', label: 'Live Weather', icon: <CloudRain size={14} />, type: 'api_required' },
   { id: 'tourism', label: 'Tourism Data', icon: <Plane size={14} />, type: 'api_required' },
   { id: 'earthquakes', label: 'Live Earthquakes', icon: <Activity size={14} />, type: 'api_required' },
 ];
 
-export default function GlobalLayersPanel({ isOpen, onClose, activeLayer, setActiveLayer }) {
+export default function GlobalLayersPanel({ isOpen, onClose, activeLayer, setActiveLayer, selectedCountry }) {
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // GDP State
+  const [gdpData, setGdpData] = useState(null);
+  const [gdpLoading, setGdpLoading] = useState(false);
+  const [gdpError, setGdpError] = useState(null);
 
   // Update clock for Time Zones layer
   useEffect(() => {
@@ -22,6 +27,40 @@ export default function GlobalLayersPanel({ isOpen, onClose, activeLayer, setAct
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, [activeLayer]);
+
+  // Fetch GDP Data
+  useEffect(() => {
+    if (activeLayer !== 'gdp') return;
+    
+    if (!selectedCountry) {
+      setGdpData(null);
+      setGdpError(null);
+      return;
+    }
+
+    const fetchGdp = async () => {
+      setGdpLoading(true);
+      setGdpError(null);
+      try {
+        const iso = selectedCountry.iso_a3 || selectedCountry.iso_a2;
+        if (!iso) throw new Error("No ISO code for this country.");
+        
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/gdp/${iso}`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch GDP data');
+        }
+        const data = await res.json();
+        setGdpData(data);
+      } catch (err) {
+        setGdpError(err.message);
+      } finally {
+        setGdpLoading(false);
+      }
+    };
+
+    fetchGdp();
+  }, [activeLayer, selectedCountry]);
 
   if (!isOpen) return null;
 
@@ -110,6 +149,40 @@ export default function GlobalLayersPanel({ isOpen, onClose, activeLayer, setAct
                         <div className="w-3 h-3 rounded-sm bg-[#ffd700] border border-white/10" /> <span className="text-[10px] text-gray-400">Day</span>
                         <div className="w-3 h-3 rounded-sm bg-[#0a192f] border border-white/10 ml-2" /> <span className="text-[10px] text-gray-400">Night</span>
                       </div>
+                    </motion.div>
+                  )}
+
+                  {isActive && layer.id === 'gdp' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="px-3 py-3 bg-black/20 rounded-lg mx-1 mt-1 border border-teal-500/20 flex flex-col gap-2 shadow-inner">
+                      {!selectedCountry ? (
+                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                          <Globe size={14} className="text-teal-400 animate-pulse" />
+                          Select a country on the globe to view its GDP.
+                        </div>
+                      ) : gdpLoading ? (
+                        <div className="flex flex-col gap-2 animate-pulse">
+                          <div className="h-3 w-24 bg-white/10 rounded"></div>
+                          <div className="h-6 w-40 bg-teal-500/20 rounded"></div>
+                        </div>
+                      ) : gdpError ? (
+                        <div className="text-xs text-red-400 flex items-center gap-2">
+                          <AlertTriangle size={14} />
+                          GDP data not available for this region.
+                        </div>
+                      ) : gdpData ? (
+                        <div className="flex flex-col">
+                          <div className="text-[10px] text-teal-400 uppercase tracking-wider font-semibold mb-1 flex items-center gap-1.5">
+                            <DollarSign size={12} />
+                            {gdpData.country} GDP ({gdpData.year})
+                          </div>
+                          <div className="text-xl font-bold text-white tracking-tight">
+                            {gdpData.formattedGdp}
+                          </div>
+                          <div className="text-[9px] text-gray-500 mt-1 uppercase tracking-widest">Source: World Bank</div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-400">No data available.</div>
+                      )}
                     </motion.div>
                   )}
 

@@ -40,6 +40,10 @@ app.get('/api/health', (req, res) => {
 const aiRoutes = require('./routes/aiRoutes');
 app.use('/api/ai', apiLimiter, aiRoutes);
 
+// GDP Routes
+const gdpRoutes = require('./routes/gdpRoutes');
+app.use('/api/gdp', apiLimiter, gdpRoutes);
+
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
 });

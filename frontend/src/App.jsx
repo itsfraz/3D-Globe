@@ -133,6 +133,7 @@ function App() {
         onClose={() => setIsLayersPanelOpen(false)}
         activeLayer={activeLayer}
         setActiveLayer={setActiveLayer}
+        selectedCountry={selectedCountry}
       />
       
       {/* Top Floating Glass Header */}

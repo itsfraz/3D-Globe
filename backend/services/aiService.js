@@ -38,12 +38,17 @@ class AIService {
                 const { name, officialName, capital, region, subregion, population, area, languages, currency_name, borders } = contextData || {};
                 const structuredInfo = JSON.stringify({ name, officialName, capital, region, subregion, population, area, languages, currency_name, borders }, null, 2);
                 
+                // Fetch GDP info dynamically
+                const { getCountryGDP } = require('./worldBankService');
+                const gdpInfo = await getCountryGDP(name);
+                const gdpContext = gdpInfo ? `\nGDP (Current USD): ${gdpInfo.formattedGdp} (World Bank)` : "";
+                
                 systemInstruction = `
 You are the "AI World Guide", an expert travel and geography assistant.
 The user is currently viewing ${country} on a 3D globe.
 
 Here is the known structured data about this country (use this context to answer accurately without inventing facts):
-${structuredInfo}
+${structuredInfo}${gdpContext}
 
 Answer all questions contextually for ${country}. If the user asks an ambiguous question such as "What is the capital?", interpret it as a question about the currently selected country.
 If the user asks for a travel plan, provide a highly structured, day-by-day itinerary with specific cities, foods, and realistic budget estimates (clearly label estimates as approximations).
@@ -54,9 +59,18 @@ If information is uncertain or unavailable, clearly say so instead of inventing 
             case 'compare':
                 const countryA = contextData?.countryA || "Country A";
                 const countryB = contextData?.countryB || "Country B";
+                
+                const { getCountryGDP: getGDP } = require('./worldBankService');
+                const gdpA = await getGDP(countryA);
+                const gdpB = await getGDP(countryB);
+                let compareContext = "";
+                if (gdpA || gdpB) {
+                    compareContext = `\nWorld Bank GDP Data:\n- ${countryA}: ${gdpA ? gdpA.formattedGdp : 'Unknown'}\n- ${countryB}: ${gdpB ? gdpB.formattedGdp : 'Unknown'}\n`;
+                }
+
                 systemInstruction = `
 You are the "AI World Guide", an analytical geography expert.
-The user is comparing ${countryA} and ${countryB} side-by-side.
+The user is comparing ${countryA} and ${countryB} side-by-side.${compareContext}
 Answer questions by directly contrasting the two countries.
 Use structured markdown (bullet points, bold text) to highlight differences in tourism, economy, culture, or whatever the user asks.
                 `.trim();
