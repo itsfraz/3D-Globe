@@ -90,38 +90,50 @@ function App() {
       />
       
       {/* Top Floating Glass Header */}
-      <header className="fixed top-4 left-4 right-4 sm:left-6 sm:right-6 h-16 glass-pill rounded-full z-30 flex items-center justify-between px-4 sm:px-6 pointer-events-auto">
+      <header className="fixed top-4 left-4 right-4 sm:left-6 sm:right-6 z-30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 px-4 py-3 sm:px-6 sm:py-0 sm:h-16 glass-pill rounded-2xl sm:rounded-full pointer-events-auto">
         
-        {/* Brand Logo & Name */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center glow-teal">
-            <Globe2 className="text-teal-400 animate-pulse-glow" size={22} />
+        {/* Top Row on Mobile / Left Side on Desktop */}
+        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3">
+          {/* Brand Logo & Name */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center glow-teal shrink-0">
+              <Globe2 className="text-teal-400 animate-pulse-glow" size={20} />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-[15px] sm:text-lg font-extrabold tracking-tight gradient-text whitespace-nowrap leading-none flex items-center gap-1.5">
+                World Globe AI
+                <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-400/30 uppercase">
+                  AI 3D
+                </span>
+              </h1>
+              <span className="text-[10px] sm:text-[11px] text-gray-400 hidden sm:block mt-0.5">Explore Earth with Interactive AI</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-base sm:text-lg font-extrabold tracking-tight gradient-text whitespace-nowrap leading-none flex items-center gap-1.5">
-              World Globe AI
-              <span className="text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-400/30 uppercase">
-                AI 3D
-              </span>
-            </h1>
-            <span className="text-[11px] text-gray-400 hidden sm:block">Explore Earth with Interactive AI</span>
-          </div>
-        </div>
 
-        {/* Header Right Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Random Country Shuffle Button */}
+          {/* Random Country Shuffle Button (Mobile) */}
           <button 
             onClick={handleRandomCountry}
             title="Discover a Random Country"
-            className="glass-pill px-3 py-2 rounded-full flex items-center gap-2 text-xs font-semibold text-teal-300 hover:text-white transition-all shadow-md active:scale-95"
+            className="sm:hidden glass-pill w-9 h-9 rounded-full flex items-center justify-center text-teal-300 hover:text-white transition-all shadow-md active:scale-95 shrink-0"
+          >
+            <Shuffle size={14} className="text-teal-400" />
+          </button>
+        </div>
+
+        {/* Bottom Row on Mobile / Right Side on Desktop */}
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          {/* Random Country Shuffle Button (Desktop) */}
+          <button 
+            onClick={handleRandomCountry}
+            title="Discover a Random Country"
+            className="hidden sm:flex glass-pill px-3 py-2 rounded-full items-center gap-2 text-xs font-semibold text-teal-300 hover:text-white transition-all shadow-md active:scale-95 shrink-0"
           >
             <Shuffle size={14} className="text-teal-400" />
             <span className="hidden md:inline">Random Nation</span>
           </button>
 
           {/* Search Bar */}
-          <div className="w-36 sm:w-64">
+          <div className="w-full sm:w-64 md:w-72">
             <SearchBar countries={countriesData} onSelectCountry={setSelectedCountry} />
           </div>
         </div>
