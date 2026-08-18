@@ -63,15 +63,20 @@ export default function AIWorldGuide({
     }
   }, [selectedCountry?.name]);
 
-  // Auto-scroll
+  // Auto-scroll only when user sends a message or opens chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    if (isLoading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isLoading]);
 
-  // Focus input when opened
+  // Focus input and scroll to bottom when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 100);
     }
   }, [isOpen]);
 

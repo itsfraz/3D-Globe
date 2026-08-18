@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Send, MapPin, Globe, Navigation, Coffee, Copy, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const SUGGESTIONS = [
   { icon: <MapPin size={12} className="text-blue-400" />, label: "What is the capital?" },
@@ -29,10 +30,12 @@ export default function InlineAIChat({ country, countryDetails }) {
     }
   }, [country?.name]);
 
-  // Auto-scroll
+  // Auto-scroll only when user sends a message to prevent jumping to the bottom of long AI answers
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    if (isLoading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isLoading]);
 
   const handleSend = async (overrideText = null) => {
     const textToSend = typeof overrideText === 'string' ? overrideText : inputValue;
@@ -139,8 +142,8 @@ export default function InlineAIChat({ country, countryDetails }) {
                 }`}
               >
                 {isModel && !msg.isError ? (
-                  <div className="prose prose-invert prose-[11px] max-w-none prose-p:leading-relaxed prose-headings:text-teal-300 prose-a:text-teal-400 prose-strong:text-white">
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-p:mb-3 prose-headings:text-teal-300 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-a:text-teal-400 prose-strong:text-white prose-strong:font-semibold prose-ul:my-2 prose-li:my-1 prose-li:marker:text-teal-500 prose-td:border-white/10 prose-th:border-white/10 prose-th:bg-white/5">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-xs whitespace-pre-wrap">{msg.text}</p>

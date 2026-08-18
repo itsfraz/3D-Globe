@@ -97,8 +97,21 @@ If live or real-time data is requested (like current weather or live flight pric
             formattedHistory.shift();
         }
 
+        const formattingGuidelines = `
+CRITICAL FORMATTING RULES:
+1. Format your response like ChatGPT or Gemini: clean, professional, readable, and highly scannable.
+2. Use clear, concise headings (H3 '###' or H4 '####') to structure your answer.
+3. Write short, digestible paragraphs (1-3 sentences max). Use plenty of line breaks.
+4. Extensively use bulleted lists and numbered lists to break down information.
+5. Use **bold text** to highlight key terms, metrics, and important concepts.
+6. Use tables ONLY when comparing multiple data points (e.g., side-by-side stats).
+7. Do NOT use horizontal rules ('---'), excessive separators, ASCII art, or unnecessary characters like '|' outside of tables.
+8. NEVER output one large block of unbroken text.
+9. Adopt a polished, authoritative, yet approachable tone typical of modern AI assistants.
+`.trim();
+
         const messages = [
-            { role: "system", content: systemInstruction },
+            { role: "system", content: systemInstruction + "\n\n" + formattingGuidelines },
             ...formattedHistory,
             { role: "user", content: safeQuestion }
         ];
