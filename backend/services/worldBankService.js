@@ -153,12 +153,16 @@ async function getCountryProfile(iso) {
       return Array.isArray(data[1]) ? data[1] : [];
     };
     
-    const [histGdp, histGdpPc, histPop, histGdpGrowth, histPopGrowth] = await Promise.all([
+    const [histGdp, histGdpPc, histPop, histGdpGrowth, histPopGrowth, histInflation, histUnemployment, histLiteracy, histLifeExpectancy] = await Promise.all([
       fetchHistorical('NY.GDP.MKTP.CD'),
       fetchHistorical('NY.GDP.PCAP.CD'),
       fetchHistorical('SP.POP.TOTL'),
       fetchHistorical('NY.GDP.MKTP.KD.ZG'),
-      fetchHistorical('SP.POP.GROW')
+      fetchHistorical('SP.POP.GROW'),
+      fetchHistorical('FP.CPI.TOTL.ZG'), // Inflation
+      fetchHistorical('SL.UEM.TOTL.ZS'), // Unemployment
+      fetchHistorical('SE.ADT.LITR.ZS'), // Literacy
+      fetchHistorical('SP.DYN.LE00.IN')  // Life Expectancy
     ]);
     
     // Format history
@@ -176,6 +180,10 @@ async function getCountryProfile(iso) {
     const latestGdpPc = histGdpPc.find(d => d.value !== null)?.value || null;
     const latestGdpGrowth = histGdpGrowth.find(d => d.value !== null)?.value || null;
     const latestPopGrowth = histPopGrowth.find(d => d.value !== null)?.value || null;
+    const latestInflation = histInflation.find(d => d.value !== null)?.value || null;
+    const latestUnemployment = histUnemployment.find(d => d.value !== null)?.value || null;
+    const latestLiteracy = histLiteracy.find(d => d.value !== null)?.value || null;
+    const latestLifeExpectancy = histLifeExpectancy.find(d => d.value !== null)?.value || null;
     
     const usdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
@@ -191,7 +199,11 @@ async function getCountryProfile(iso) {
         gdpPerCapita: latestGdpPc,
         formattedGdpPerCapita: latestGdpPc ? usdFormatter.format(latestGdpPc) : null,
         gdpGrowth: latestGdpGrowth,
-        popGrowth: latestPopGrowth
+        popGrowth: latestPopGrowth,
+        inflation: latestInflation,
+        unemployment: latestUnemployment,
+        literacy: latestLiteracy,
+        lifeExpectancy: latestLifeExpectancy
       },
       history,
       rankings: {

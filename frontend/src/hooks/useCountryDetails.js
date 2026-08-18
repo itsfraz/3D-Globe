@@ -70,6 +70,7 @@ export function useCountryDetails(country) {
             population: mledozeMatch?.population || primaryMatch?.population || 'N/A',
             currency_name: primaryMatch?.currency_name || (currObj ? currObj.name : 'N/A'),
             currency_symbol: primaryMatch?.currency_symbol || (currObj ? currObj.symbol : ''),
+            currency_code: primaryMatch?.currency || currKey || 'N/A',
             iso2: primaryMatch?.iso2 || mledozeMatch?.cca2,
             area: mledozeMatch?.area || 'N/A',
             languages: languagesStr,
