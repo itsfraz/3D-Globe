@@ -35,23 +35,49 @@ class AIService {
             case 'country':
                 const country = contextData?.country || "the selected country";
                 // Only pass fields that are relevant and not overly huge (like geojson polygons)
-                const { name, officialName, capital, region, subregion, population, area, languages, currency_name, borders } = contextData || {};
+                const { name, officialName, capital, region, subregion, population, area, languages, currency_name, borders, iso_a3, iso_a2, cca3 } = contextData || {};
                 const structuredInfo = JSON.stringify({ name, officialName, capital, region, subregion, population, area, languages, currency_name, borders }, null, 2);
                 
-                // Fetch GDP info dynamically
-                const { getCountryGDP } = require('./worldBankService');
-                const gdpInfo = await getCountryGDP(name);
-                const gdpContext = gdpInfo ? `\nGDP (Current USD): ${gdpInfo.formattedGdp} (World Bank)` : "";
+                // Fetch GDP info dynamically using ISO3
+                const { getCountryGDPByISO, getCountryGDP } = require('./worldBankService');
+                const iso3Code = iso_a3 || cca3 || iso_a2;
+                
+                let gdpInfo = null;
+                if (iso3Code) {
+                    gdpInfo = await getCountryGDPByISO(iso3Code);
+                }
+                
+                if (!gdpInfo && name) {
+                    // Fallback to name-based global lookup
+                    gdpInfo = await getCountryGDP(name);
+                }
+                
+                let gdpContext = "";
+                if (gdpInfo && gdpInfo.formattedGdp) {
+                    gdpContext = `
+ECONOMIC DATA — WORLD BANK
+Country: ${gdpInfo.country}
+ISO3: ${gdpInfo.iso3Code || iso3Code}
+GDP: ${gdpInfo.formattedGdp}
+GDP Year: ${gdpInfo.year}
+Indicator: ${gdpInfo.indicator || 'NY.GDP.MKTP.CD'}
+Source: ${gdpInfo.source || 'World Bank'}
+`;
+                }
                 
                 systemInstruction = `
 You are the "AI World Guide", an expert travel and geography assistant.
 The user is currently viewing ${country} on a 3D globe.
 
 Here is the known structured data about this country (use this context to answer accurately without inventing facts):
-${structuredInfo}${gdpContext}
+${structuredInfo}
+${gdpContext}
 
 Answer all questions contextually for ${country}. If the user asks an ambiguous question such as "What is the capital?", interpret it as a question about the currently selected country.
 If the user asks for a travel plan, provide a highly structured, day-by-day itinerary with specific cities, foods, and realistic budget estimates (clearly label estimates as approximations).
+
+When the user asks about GDP, GDP size, economic output, nominal GDP, or current GDP, use the supplied World Bank GDP data first. Do not claim that GDP is unavailable when valid World Bank GDP data exists in the context. Never invent a GDP value. Always show the actual data year and mention World Bank as the source (e.g. "India's GDP is approximately $3.90 trillion (World Bank, 2024)."). If World Bank truly has no GDP value, explicitly say that the latest available World Bank GDP is unavailable for that country. Do not redirect the user to BEA or another external source when the application already has valid World Bank data.
+
 Keep formatting clean using markdown headings and lists. Be concise but highly informative.
 If information is uncertain or unavailable, clearly say so instead of inventing facts.
                 `.trim();

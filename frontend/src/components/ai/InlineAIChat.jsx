@@ -55,6 +55,7 @@ export default function InlineAIChat({ country, countryDetails }) {
           contextType: 'country',
           contextData: {
             country: country.name,
+            iso3Code: country.iso_a3 || country.iso_a2 || country.cca3,
             ...country,
             ...(countryDetails || {})
           },

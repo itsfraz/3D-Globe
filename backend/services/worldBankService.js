@@ -7,6 +7,7 @@ let gdpCache = null;
 let lastFetchTime = 0;
 let popCache = null;
 let lastPopFetchTime = 0;
+const gdpIsoCache = new Map();
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
 /**
@@ -204,8 +205,87 @@ async function getCountryProfile(iso) {
   }
 }
 
+/**
+ * Retrieves GDP for a specific country by ISO3 code directly from the World Bank API.
+ * Uses an isolated per-ISO cache.
+ */
+async function getCountryGDPByISO(iso3) {
+  if (!iso3 || typeof iso3 !== 'string') {
+    console.error("[WorldBank][GDP] ISO3: INVALID Status: FAILED Reason: No valid ISO3 provided");
+    return null;
+  }
+  
+  const code = iso3.toUpperCase();
+  
+  // Check isolated cache
+  if (gdpIsoCache.has(code)) {
+    const cached = gdpIsoCache.get(code);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
+  const url = `https://api.worldbank.org/v2/country/${code}/indicator/NY.GDP.MKTP.CD?format=json&per_page=100`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`[WorldBank][GDP] ISO3: ${code} Status: FAILED Reason: HTTP ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // Validate response format
+    if (!Array.isArray(data) || data.length < 2 || !Array.isArray(data[1])) {
+      console.error(`[WorldBank][GDP] ISO3: ${code} Status: FAILED Reason: Empty or malformed response from World Bank`);
+      return null;
+    }
+
+    const records = data[1];
+    
+    // Find the first (most recent) non-null GDP record
+    const validRecord = records.find(r => r.value !== null);
+
+    if (!validRecord) {
+      console.error(`[WorldBank][GDP] ISO3: ${code} Status: FAILED Reason: No non-null GDP records found`);
+      return null;
+    }
+
+    const usdFormatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0
+    });
+
+    const result = {
+      country: validRecord.country.value,
+      iso3Code: validRecord.countryiso3code || code,
+      year: validRecord.date,
+      rawGdp: validRecord.value,
+      formattedGdp: usdFormatter.format(validRecord.value),
+      indicator: validRecord.indicator.id,
+      source: "World Bank"
+    };
+
+    console.log(`[WorldBank][GDP] ISO3: ${code} Status: SUCCESS Year: ${result.year} Value: ${result.formattedGdp}`);
+
+    // Update isolated cache
+    gdpIsoCache.set(code, {
+      timestamp: Date.now(),
+      data: result
+    });
+
+    return result;
+  } catch (err) {
+    console.error(`[WorldBank][GDP] ISO3: ${code} Status: FAILED Reason: ${err.message}`);
+    return null;
+  }
+}
+
 module.exports = {
   fetchLatestGDP,
   getCountryGDP,
+  getCountryGDPByISO,
   getCountryProfile
 };
