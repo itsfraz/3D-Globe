@@ -12,6 +12,7 @@ export default function GlobeView({
   isQuizMode = false,
   quizModeType = null,
   quizTargetCountry = null,
+  quizFeedback = null,
   onQuizGlobeClick,
   countriesData, 
   onGlobeReady,
@@ -125,6 +126,34 @@ export default function GlobeView({
     }
   }, [selectedCountry, compareCountries, isCompareMode, countriesData]);
 
+  // Disable auto-rotate globally while quiz is active
+  useEffect(() => {
+    if (globeRef.current) {
+      if (isQuizMode) {
+        globeRef.current.controls().autoRotate = false;
+        if (interactionTimeout.current) clearTimeout(interactionTimeout.current);
+      } else {
+        globeRef.current.controls().autoRotate = isRotating;
+      }
+    }
+  }, [isQuizMode, isRotating]);
+
+  // Auto-center quiz target
+  useEffect(() => {
+    if (isQuizMode && quizTargetCountry && globeRef.current && countriesData) {
+      const feature = countriesData.find(f => f.properties.name === quizTargetCountry.name);
+      if (feature) {
+        const centroid = geoCentroid(feature);
+        if (!isNaN(centroid[0]) && !isNaN(centroid[1])) {
+          globeRef.current.pointOfView(
+            { lat: centroid[1], lng: centroid[0], altitude: 1.8 },
+            1000
+          );
+        }
+      }
+    }
+  }, [quizTargetCountry, isQuizMode, countriesData]);
+
   const toggleRotation = () => {
     if (!globeRef.current) return;
     const controls = globeRef.current.controls();
@@ -146,7 +175,7 @@ export default function GlobeView({
   };
 
   const handleInteractionStart = () => {
-    if (globeRef.current) {
+    if (globeRef.current && !isQuizMode) {
       globeRef.current.controls().autoRotate = false;
       if (interactionTimeout.current) {
         clearTimeout(interactionTimeout.current);
@@ -155,12 +184,12 @@ export default function GlobeView({
   };
 
   const handleInteractionEnd = () => {
-    if (globeRef.current && isRotating) {
+    if (globeRef.current && isRotating && !isQuizMode) {
       if (interactionTimeout.current) {
         clearTimeout(interactionTimeout.current);
       }
       interactionTimeout.current = setTimeout(() => {
-        if (globeRef.current && isRotating) {
+        if (globeRef.current && isRotating && !isQuizMode) {
           globeRef.current.controls().autoRotate = true;
         }
       }, 4000);
@@ -213,9 +242,19 @@ export default function GlobeView({
           return 0.012;
         }}
         polygonCapColor={(d) => {
-          // Priority 1: Quiz Highlight
-          if (isQuizMode && quizModeType === 'guess_country' && quizTargetCountry && quizTargetCountry.name === d.properties.name) {
-            return 'rgba(234, 179, 8, 0.85)';
+          // Priority 1: Quiz Highlight & Feedback
+          if (isQuizMode) {
+            if (quizModeType === 'guess_country' && quizTargetCountry && quizTargetCountry.name === d.properties.name) {
+              return 'rgba(234, 179, 8, 0.85)'; // Yellow target
+            }
+            if (quizModeType === 'locate_country' && quizFeedback) {
+              if (quizFeedback.targetName === d.properties.name) {
+                return 'rgba(34, 197, 94, 0.85)'; // Green for target
+              }
+              if (quizFeedback.clickedName === d.properties.name && !quizFeedback.isCorrect) {
+                return 'rgba(239, 68, 68, 0.85)'; // Red for wrong click
+              }
+            }
           }
           
           // Priority 2: Selection / Comparison Highlights
@@ -265,8 +304,14 @@ export default function GlobeView({
         }}
         polygonSideColor={() => 'rgba(7, 10, 18, 0.6)'}
         polygonStrokeColor={(d) => {
-          if (isQuizMode && quizModeType === 'guess_country' && quizTargetCountry && quizTargetCountry.name === d.properties.name) {
-            return '#facc15';
+          if (isQuizMode) {
+            if (quizModeType === 'guess_country' && quizTargetCountry && quizTargetCountry.name === d.properties.name) {
+              return '#facc15';
+            }
+            if (quizModeType === 'locate_country' && quizFeedback) {
+              if (quizFeedback.targetName === d.properties.name) return '#4ade80';
+              if (quizFeedback.clickedName === d.properties.name && !quizFeedback.isCorrect) return '#f87171';
+            }
           }
           if (isCompareMode) {
             const isCompared = compareCountries.some(c => c.name === d.properties.name);
@@ -285,7 +330,7 @@ export default function GlobeView({
           return isNightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.25)';
         }}
         polygonLabel={(d) => {
-          if (isQuizMode && quizModeType === 'guess_country') return ''; // Hide label during quiz
+          if (isQuizMode && (quizModeType === 'guess_country' || quizModeType === 'locate_country')) return ''; // Hide labels during map quizzes
 
           let extraInfo = '';
           if (activeLayer === 'population' && d.properties.population) {

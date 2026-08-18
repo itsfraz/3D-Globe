@@ -40,6 +40,7 @@ function App() {
   const [quizModeType, setQuizModeType] = useState(null);
   const [quizTargetCountry, setQuizTargetCountry] = useState(null);
   const [quizClickedPolygon, setQuizClickedPolygon] = useState(null);
+  const [quizFeedback, setQuizFeedback] = useState(null);
 
   const [isNightMode, setIsNightMode] = useState(false);
   const [showArcs, setShowArcs] = useState(true);
@@ -117,6 +118,7 @@ function App() {
         isQuizMode={isQuizModeOpen}
         quizModeType={quizModeType}
         quizTargetCountry={quizTargetCountry}
+        quizFeedback={quizFeedback}
         onQuizGlobeClick={setQuizClickedPolygon}
         countriesData={countriesData}
         onGlobeReady={() => setIsGlobeReady(true)}
@@ -337,11 +339,15 @@ function App() {
       {/* Global Geo Challenge */}
       <GeoChallenge 
         isOpen={isQuizModeOpen}
-        onClose={() => setIsQuizModeOpen(false)}
+        onClose={() => {
+          setIsQuizModeOpen(false);
+          setQuizClickedPolygon(null);
+        }}
         countriesData={countriesData}
         userJourney={userJourney}
         setQuizModeType={setQuizModeType}
         setQuizTargetCountry={setQuizTargetCountry}
+        setQuizFeedback={setQuizFeedback}
         quizClickedPolygon={quizClickedPolygon}
         clearQuizClickedPolygon={() => setQuizClickedPolygon(null)}
       />

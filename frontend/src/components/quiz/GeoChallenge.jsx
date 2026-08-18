@@ -26,6 +26,7 @@ export default function GeoChallenge({
   userJourney,
   setQuizModeType,
   setQuizTargetCountry,
+  setQuizFeedback,
   quizClickedPolygon,
   clearQuizClickedPolygon
 }) {
@@ -43,23 +44,36 @@ export default function GeoChallenge({
     if (!isOpen) {
       setQuizModeType(null);
       setQuizTargetCountry(null);
+      if (setQuizFeedback) setQuizFeedback(null);
     }
-  }, [isOpen, setQuizModeType, setQuizTargetCountry]);
+  }, [isOpen, setQuizModeType, setQuizTargetCountry, setQuizFeedback]);
 
   // Generate Questions
   const generateQuestions = useCallback(() => {
     if (!countriesData || countriesData.length < 20) return [];
     
-    const validCountries = countriesData.filter(c => c.properties.name && (c.properties.iso_a2 || c.properties.iso_a3));
     const qs = [];
     
     for (let i = 0; i < TOTAL_QUESTIONS; i++) {
       const mode = MODES[Math.floor(Math.random() * MODES.length)];
       
-      // Select 1 correct and 3 wrong options
+      let validCountries = countriesData.filter(c => c.properties.name && (c.properties.iso_a2 || c.properties.iso_a3));
+      
+      if (mode === 'guess_capital') validCountries = validCountries.filter(c => c.properties.capital);
+      if (mode === 'guess_flag') validCountries = validCountries.filter(c => c.properties.iso_a2 || c.properties.iso_a3);
+      if (mode === 'facts') validCountries = validCountries.filter(c => c.properties.region);
+      if (mode === 'locate_country') validCountries = validCountries.filter(c => geoCentroid(c) && !isNaN(geoCentroid(c)[0]));
+      
       const shuffled = [...validCountries].sort(() => 0.5 - Math.random());
       const target = shuffled[0];
-      const options = [target, shuffled[1], shuffled[2], shuffled[3]].sort(() => 0.5 - Math.random());
+      
+      const optionsSet = new Set([target]);
+      let j = 1;
+      while (optionsSet.size < 4 && j < shuffled.length) {
+        optionsSet.add(shuffled[j]);
+        j++;
+      }
+      const options = Array.from(optionsSet).sort(() => 0.5 - Math.random());
       
       let questionText = "";
       
@@ -114,7 +128,7 @@ export default function GeoChallenge({
       timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            handleTimeUp();
+            clearInterval(timer);
             return 0;
           }
           return prev - 1;
@@ -124,10 +138,22 @@ export default function GeoChallenge({
     return () => clearInterval(timer);
   }, [gameState, isAnswered, timerEnabled]);
 
-  const handleTimeUp = () => {
+  useEffect(() => {
+    if (timeLeft === 0 && !isAnswered && gameState === 'playing') {
+      handleTimeUp();
+    }
+  }, [timeLeft, isAnswered, gameState]);
+
+  const handleTimeUp = useCallback(() => {
+    if (isAnswered) return;
     setIsAnswered(true);
     setSelectedAnswer('timeout');
-  };
+    
+    if (setQuizFeedback) {
+      const q = questions[currentIndex];
+      if (q) setQuizFeedback({ clickedName: null, targetName: q.target.name, isCorrect: false });
+    }
+  }, [isAnswered, setQuizFeedback, questions, currentIndex]);
 
   // Handle globe clicks for locate mode
   useEffect(() => {
@@ -155,9 +181,13 @@ export default function GeoChallenge({
         });
         setIsAnswered(true);
         if (isCorrect) setScore(s => s + 1);
+        
+        if (setQuizFeedback) {
+          setQuizFeedback({ clickedName, targetName: q.target.name, isCorrect });
+        }
       }
     }
-  }, [quizClickedPolygon, gameState, isAnswered, currentIndex, questions]);
+  }, [quizClickedPolygon, gameState, isAnswered, currentIndex, questions, setQuizFeedback]);
 
   const handleAnswerSelect = (option) => {
     if (isAnswered) return;
@@ -170,7 +200,9 @@ export default function GeoChallenge({
     setIsAnswered(true);
     
     let isCorrect = false;
-    if (q.mode === 'guess_capital' || q.mode === 'guess_country' || q.mode === 'guess_flag' || q.mode === 'facts') {
+    if (q.mode === 'guess_capital') {
+      isCorrect = option.capital === q.target.capital;
+    } else if (q.mode === 'guess_country' || q.mode === 'guess_flag' || q.mode === 'facts') {
       isCorrect = option.name === q.target.name;
     }
 
@@ -186,11 +218,20 @@ export default function GeoChallenge({
       setIsAnswered(false);
       setSelectedAnswer(null);
       setTimeLeft(15);
+      if (setQuizFeedback) setQuizFeedback(null);
       setupGlobeForQuestion(nextQ);
     } else {
       setGameState('result');
       setQuizModeType(null);
       setQuizTargetCountry(null);
+      if (setQuizFeedback) setQuizFeedback(null);
+      
+      const finalScore = isAnswered && selectedAnswer && selectedAnswer !== 'timeout' && 
+                         (selectedAnswer.isCorrect || 
+                          (questions[currentIndex].mode === 'guess_capital' && selectedAnswer.capital === questions[currentIndex].target.capital) ||
+                          (questions[currentIndex].mode !== 'guess_capital' && selectedAnswer.name === questions[currentIndex].target.name))
+                         ? score : score; // Note: score is already updated by setScore above, but setState is async. Actually `score` state reflects the previous answer immediately if we wait for next render. But in handleNext, score might not be flushed if they click very fast. It's safer to use the state `score` because handleNext requires manual click, meaning state HAS flushed.
+                         
       if (userJourney?.recordQuizScore) {
         userJourney.recordQuizScore(score, TOTAL_QUESTIONS);
       }
@@ -204,10 +245,10 @@ export default function GeoChallenge({
   return (
     <AnimatePresence>
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="fixed inset-x-4 top-24 md:inset-auto md:top-24 md:right-8 z-40 bg-[#0d1322]/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col w-auto md:w-[450px]"
+        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 50, scale: 0.95 }}
+        className="fixed inset-x-0 bottom-0 md:inset-auto md:top-24 md:right-8 md:bottom-auto z-40 bg-[#0d1322]/95 backdrop-blur-2xl border-t md:border border-white/10 rounded-t-3xl md:rounded-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col w-full md:w-[450px] max-h-[50vh] md:max-h-[80vh]"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-white/5">
@@ -220,7 +261,7 @@ export default function GeoChallenge({
           </button>
         </div>
 
-        <div className="p-5 flex flex-col relative min-h-[350px]">
+        <div className="p-5 flex flex-col relative overflow-y-auto custom-scrollbar flex-1">
           {/* MENU STATE */}
           {gameState === 'menu' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full justify-center">
@@ -264,7 +305,7 @@ export default function GeoChallenge({
               <div className="h-1.5 w-full bg-white/10 rounded-full mb-6 overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${((currentIndex) / TOTAL_QUESTIONS) * 100}%` }}
+                  animate={{ width: `${((currentIndex + 1) / TOTAL_QUESTIONS) * 100}%` }}
                   className="h-full bg-teal-500 rounded-full"
                 />
               </div>
